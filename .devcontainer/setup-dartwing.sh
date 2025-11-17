@@ -8,7 +8,7 @@ echo "=========================================="
 # Configuration
 BENCH_PATH="/workspace/development/frappe-bench"
 SITE_NAME="dartwing.localhost"
-APP_NAME="dartwing_frappe"
+APP_NAME="dartwing"
 ADMIN_PASSWORD="admin"
 DB_ROOT_PASSWORD="frappe"
 
