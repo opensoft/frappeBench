@@ -11,6 +11,7 @@ dist/
 build/
 
 # Frappe
+development/
 sites/*/private/backups/
 sites/*/private/files/
 sites/assets/
