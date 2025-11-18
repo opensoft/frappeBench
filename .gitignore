@@ -10,11 +10,21 @@ venv/
 dist/
 build/
 
-# Frappe
-development/
-sites/*/private/backups/
-sites/*/private/files/
-sites/assets/
+# Frappe Bench - Apps (separate git repos)
+development/frappe-bench/apps/*/
+
+# Frappe Bench - Runtime/Generated
+development/frappe-bench/env/
+development/frappe-bench/logs/
+development/frappe-bench/archived/
+development/frappe-bench/sites/*/private/backups/
+development/frappe-bench/sites/*/private/files/
+development/frappe-bench/sites/assets/
+development/frappe-bench/sites/*/.test_log
+development/frappe-bench/sites/*/locks/
+development/frappe-bench/config/pids/
+
+# Frappe - General
 node_modules/
 *.swp
 *.swo
