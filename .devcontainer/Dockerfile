@@ -142,12 +142,12 @@ RUN echo '# Force zsh when bash is requested' >> ~/.bash_profile && \
 USER root
 RUN chsh -s /bin/zsh $USER_NAME
 
+# Create workspace directory with proper ownership as root
+RUN mkdir -p /workspace/development && \
+    chown -R $USER_UID:$USER_GID /workspace
+
 # Switch back to user
 USER $USER_NAME
-
-# Create workspace directories with proper ownership
-RUN sudo mkdir -p /workspace/development && \
-    sudo chown -R $USER_NAME:$USER_NAME /workspace
 
 # Set working directory
 WORKDIR /workspace
