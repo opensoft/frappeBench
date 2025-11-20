@@ -2,11 +2,11 @@
   "name": "${containerEnv:PROJECT_NAME:Frappe Development}",
   "_devcontainer_version": "1.0.0",
   "_template_version": "frappe-devcontainer-1.0.0",
-  "dockerComposeFile": ["docker-compose.yml", "docker-compose.override.yml"],
+  "dockerComposeFile": "docker-compose.yml",
   "service": "frappe",
   "workspaceFolder": "/workspace",
 
-  "forwardPorts": [8000, 8081, 9000, 1455],
+  "forwardPorts": [8081, 9000, 1455],
 
   "portsAttributes": {
     "8081": {
@@ -23,11 +23,15 @@
     }
   },
   "runServices": [
-    "frappe",
     "mariadb",
     "redis-cache",
     "redis-queue",
     "redis-socketio",
+    // "worker-default",
+    // "worker-short",
+    // "worker-long",
+    // "scheduler",
+    // "socketio",
     "nginx"
   ],
   "shutdownAction": "stopCompose",
@@ -44,12 +48,14 @@
         "redhat.vscode-yaml",
         "esbenp.prettier-vscode",
         "dbaeumer.vscode-eslint",
+        "continue.continue",
         "ms-azuretools.vscode-docker",
         "bradlc.vscode-tailwindcss",
         "esbenp.prettier-vscode",
         "eamodio.gitlens",
         "k--kato.docomment",
         // AI assistance extensions
+        "sourcegraph.cody-ai",
         "anthropic.claude-dev",
         "anthropic.claude-code",
         "openai.chatgpt",
@@ -109,8 +115,5 @@
     "env": "cp .devcontainer/.env.example .devcontainer/.env || true",
     "setup": "bash .devcontainer/setup-frappe.sh"
   },
-  "postAttachCommand": {
-    "welcome": "echo 'Connected to Frappe development environment'",
-    "aliases": "source /workspace/development/frappe-bench/.bench_aliases 2>/dev/null || true"
-  }
+  "postAttachCommand": "echo 'Connected to Frappe development environment'"
 }

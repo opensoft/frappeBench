@@ -72,44 +72,19 @@ ensure_apps_txt() {
 }
 
 ensure_site() {
-    local site_path="$BENCH_DIR/sites/$FRAPPE_SITE_NAME"
-    if [ -d "$site_path" ]; then
+    if [ ! -d "$BENCH_DIR/sites/$FRAPPE_SITE_NAME" ]; then
+        log "$BLUE" "[Site] Creating $FRAPPE_SITE_NAME..."
+        bench new-site "$FRAPPE_SITE_NAME" \
+            --mariadb-root-password "$DB_PASSWORD" \
+            --admin-password "$ADMIN_PASSWORD" \
+            --db-host "$DB_HOST" \
+            --db-port 3306 \
+            --no-mariadb-socket \
+            --verbose
+        log "$GREEN" "  ✓ Site created."
+    else
         log "$GREEN" "[Site] $FRAPPE_SITE_NAME already exists."
-        return
     fi
-
-    log "$BLUE" "[Site] Creating $FRAPPE_SITE_NAME..."
-    local create_log
-    create_log=$(mktemp)
-    local -a site_args=(
-        "$FRAPPE_SITE_NAME"
-        --mariadb-root-password "$DB_PASSWORD"
-        --admin-password "$ADMIN_PASSWORD"
-        --db-host "$DB_HOST"
-        --db-port 3306
-        --no-mariadb-socket
-        --verbose
-    )
-
-    set +e
-    bench new-site "${site_args[@]}" >"$create_log" 2>&1
-    local status=$?
-    set -e
-
-    if [ $status -ne 0 ]; then
-        if grep -q "Database .* already exists" "$create_log"; then
-            log "$YELLOW" "[Site] Existing database detected; recreating with --force (data will be reset)..."
-            bench new-site --force "${site_args[@]}"
-        else
-            log "$YELLOW" "[Site] Site creation failed. Log follows:"
-            sed -n '1,200p' "$create_log"
-            rm -f "$create_log"
-            exit $status
-        fi
-    fi
-
-    rm -f "$create_log"
-    log "$GREEN" "  ✓ Site created."
 }
 
 ensure_common_site_config() {
