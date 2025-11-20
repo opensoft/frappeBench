@@ -20,27 +20,12 @@ services:
     
     # Run as user specified with defaults
     user: "${UID:-1000}:${GID:-1000}"
+    ports:
+      - "8000:8000"  # Expose Frappe web server
     volumes:
       # Workspace
       - ../:/workspace:cached
-      
-      # Shell configurations
-      - ~/.zshrc:/home/${USER:-frappe}/.zshrc:ro
-      - ~/.bashrc:/home/${USER:-frappe}/.bashrc:ro
-      - ~/.oh-my-zsh:/home/${USER:-frappe}/.oh-my-zsh:ro
-      - ~/.p10k.zsh:/home/${USER:-frappe}/.p10k.zsh:ro
-      
-      # Git configuration
-      - ~/.gitconfig:/home/${USER:-frappe}/.gitconfig:ro
-      
-      # SSH configurations and keys
-      - ~/.ssh/config:/home/${USER:-frappe}/.ssh/config:ro
-      - ~/.ssh/id_ed25519:/home/${USER:-frappe}/.ssh/id_ed25519:ro
-      - ~/.ssh/id_ed25519.pub:/home/${USER:-frappe}/.ssh/id_ed25519.pub:ro
-      - ~/.ssh/id_rsa_ado:/home/${USER:-frappe}/.ssh/id_rsa_ado:ro
-      - ~/.ssh/id_rsa_ado.pub:/home/${USER:-frappe}/.ssh/id_rsa_ado.pub:ro
-      - ~/.ssh/known_hosts:/home/${USER:-frappe}/.ssh/known_hosts:ro
-    command: sleep infinity
+    command: /bin/sh -c "bash /workspace/development/frappe-bench/start-bench.sh; tail -F /tmp/bench.log"
     networks:
       - frappe-network
     depends_on:
@@ -130,92 +115,166 @@ services:
       timeout: 5s
       retries: 5
 
-  # NOTE: Worker containers disabled for development
-  # In development, run "bench start" inside the dev container
-  # which will start all workers, scheduler, and socketio locally
-  
-  # worker-default:
-  #   image: frappe/bench:latest
-  #   container_name: frappe-worker-default
-  #   command: bench worker --queue default
-  #   volumes:
-  #     - frappe-bench-data:/workspace/development/frappe-bench
-  #   networks:
-  #     - frappe-network
-  #   depends_on:
-  #     - frappe
-  #     - mariadb
-  #     - redis-queue
-  #   environment:
-  #     - DB_HOST=mariadb
-  #     - REDIS_QUEUE=redis-queue:6379
-  #   restart: unless-stopped
+  # Worker containers for development
+  worker-default:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        USER_NAME: ${USER}
+        USER_UID: ${UID:-1000}
+        USER_GID: ${GID:-1000}
+    container_name: ${PROJECT_NAME:-frappe}-worker-default
+    user: "${UID:-1000}:${GID:-1000}"
+    command: bench worker --queue default
+    volumes:
+      - ../:/workspace:cached
+    networks:
+      - frappe-network
+    depends_on:
+      - frappe
+      - mariadb
+      - redis-queue
+    environment:
+      - PROJECT_NAME=${PROJECT_NAME:-frappe}
+      - DB_HOST=mariadb
+      - DB_PORT=3306
+      - REDIS_CACHE=redis-cache:6379
+      - REDIS_QUEUE=redis-queue:6379
+      - REDIS_SOCKETIO=redis-socketio:6379
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: ${CONTAINER_MEMORY:-2g}
+          cpus: '${CONTAINER_CPUS:-1}'
 
-  # worker-short:
-  #   image: frappe/bench:latest
-  #   container_name: frappe-worker-short
-  #   command: bench worker --queue short
-  #   volumes:
-  #     - frappe-bench-data:/workspace/development/frappe-bench
-  #   networks:
-  #     - frappe-network
-  #   depends_on:
-  #     - frappe
-  #     - mariadb
-  #     - redis-queue
-  #   environment:
-  #     - DB_HOST=mariadb
-  #     - REDIS_QUEUE=redis-queue:6379
-  #   restart: unless-stopped
+  worker-short:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        USER_NAME: ${USER}
+        USER_UID: ${UID:-1000}
+        USER_GID: ${GID:-1000}
+    container_name: ${PROJECT_NAME:-frappe}-worker-short
+    user: "${UID:-1000}:${GID:-1000}"
+    command: bench worker --queue short
+    volumes:
+      - ../:/workspace:cached
+    networks:
+      - frappe-network
+    depends_on:
+      - frappe
+      - mariadb
+      - redis-queue
+    environment:
+      - PROJECT_NAME=${PROJECT_NAME:-frappe}
+      - DB_HOST=mariadb
+      - DB_PORT=3306
+      - REDIS_CACHE=redis-cache:6379
+      - REDIS_QUEUE=redis-queue:6379
+      - REDIS_SOCKETIO=redis-socketio:6379
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: ${CONTAINER_MEMORY:-2g}
+          cpus: '${CONTAINER_CPUS:-1}'
 
-  # worker-long:
-  #   image: frappe/bench:latest
-  #   container_name: frappe-worker-long
-  #   command: bench worker --queue long
-  #   volumes:
-  #     - frappe-bench-data:/workspace/development/frappe-bench
-  #   networks:
-  #     - frappe-network
-  #   depends_on:
-  #     - frappe
-  #     - mariadb
-  #     - redis-queue
-  #   environment:
-  #     - DB_HOST=mariadb
-  #     - REDIS_QUEUE=redis-queue:6379
-  #   restart: unless-stopped
+  worker-long:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        USER_NAME: ${USER}
+        USER_UID: ${UID:-1000}
+        USER_GID: ${GID:-1000}
+    container_name: ${PROJECT_NAME:-frappe}-worker-long
+    user: "${UID:-1000}:${GID:-1000}"
+    command: bench worker --queue long
+    volumes:
+      - ../:/workspace:cached
+    networks:
+      - frappe-network
+    depends_on:
+      - frappe
+      - mariadb
+      - redis-queue
+    environment:
+      - PROJECT_NAME=${PROJECT_NAME:-frappe}
+      - DB_HOST=mariadb
+      - DB_PORT=3306
+      - REDIS_CACHE=redis-cache:6379
+      - REDIS_QUEUE=redis-queue:6379
+      - REDIS_SOCKETIO=redis-socketio:6379
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: ${CONTAINER_MEMORY:-4g}
+          cpus: '${CONTAINER_CPUS:-1}'
 
-  # scheduler:
-  #   image: frappe/bench:latest
-  #   container_name: frappe-scheduler
-  #   command: bench schedule
-  #   volumes:
-  #     - frappe-bench-data:/workspace/development/frappe-bench
-  #   networks:
-  #     - frappe-network
-  #   depends_on:
-  #     - frappe
-  #     - mariadb
-  #     - redis-queue
-  #   environment:
-  #     - DB_HOST=mariadb
-  #     - REDIS_QUEUE=redis-queue:6379
-  #   restart: unless-stopped
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        USER_NAME: ${USER}
+        USER_UID: ${UID:-1000}
+        USER_GID: ${GID:-1000}
+    container_name: ${PROJECT_NAME:-frappe}-scheduler
+    user: "${UID:-1000}:${GID:-1000}"
+    command: bench schedule
+    volumes:
+      - ../:/workspace:cached
+    networks:
+      - frappe-network
+    depends_on:
+      - frappe
+      - mariadb
+      - redis-queue
+    environment:
+      - PROJECT_NAME=${PROJECT_NAME:-frappe}
+      - DB_HOST=mariadb
+      - DB_PORT=3306
+      - REDIS_CACHE=redis-cache:6379
+      - REDIS_QUEUE=redis-queue:6379
+      - REDIS_SOCKETIO=redis-socketio:6379
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: ${CONTAINER_MEMORY:-2g}
+          cpus: '${CONTAINER_CPUS:-1}'
 
-  # socketio:
-  #   image: frappe/bench:latest
-  #   container_name: frappe-socketio
-  #   command: node apps/frappe/socketio.js
-  #   volumes:
-  #     - frappe-bench-data:/workspace/development/frappe-bench
-  #   networks:
-  #     - frappe-network
-  #   depends_on:
-  #     - frappe
-  #     - redis-socketio
-  #   environment:
-  #     - REDIS_SOCKETIO=redis-socketio:6379
-  #   restart: unless-stopped
+  socketio:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        USER_NAME: ${USER}
+        USER_UID: ${UID:-1000}
+        USER_GID: ${GID:-1000}
+    container_name: ${PROJECT_NAME:-frappe}-socketio
+    user: "${UID:-1000}:${GID:-1000}"
+    command: node apps/frappe/socketio.js
+    volumes:
+      - ../:/workspace:cached
+    networks:
+      - frappe-network
+    depends_on:
+      - frappe
+      - redis-socketio
+    environment:
+      - PROJECT_NAME=${PROJECT_NAME:-frappe}
+      - REDIS_SOCKETIO=redis-socketio:6379
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: ${CONTAINER_MEMORY:-1g}
+          cpus: '${CONTAINER_CPUS:-0.5}'
 
   # Nginx Reverse Proxy (optional for development)
   # For development, you can access Frappe directly via "bench start" on port 8000
@@ -226,6 +285,7 @@ services:
       - "8081:80"
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ../:/workspace:ro
     networks:
       - frappe-network
     depends_on:
