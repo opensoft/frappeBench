@@ -45,10 +45,12 @@ A complete Frappe development environment with devcontainer support for VSCode, 
    ```
 
 4. **Start Frappe**:
-   ```bash
-   cd /workspace/development/frappe-bench
-   bench start
-   ```
+   - The dev container now runs `bench start` automatically on boot (logs: `/tmp/bench.log`).
+   - To restart manually:
+     ```bash
+     cd /workspace/development/frappe-bench
+     bench start
+     ```
 
 5. **Access the site**:
    - Open browser to http://localhost:8080
