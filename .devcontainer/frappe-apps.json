@@ -1,0 +1,20 @@
+[
+  {
+    "app": "dartwing-prod",
+    "source": "/home/brett/projects/dartwingers/dartwing/dartwing-frappe/development/frappe-bench/apps/dartwing",
+    "target": "/workspace/development/frappe-bench/apps/dartwing-prod",
+    "branch": "main",
+    "site": "prod.dartwing.localhost",
+    "site_admin_password": "admin",
+    "site_db_name": "dartwing_prod"
+  },
+  {
+    "app": "dartwing",
+    "source": "/home/brett/projects/dartwingers/dartwing/dartwing-frappe/development/frappe-bench/apps/dartwing",
+    "target": "/workspace/development/frappe-bench/apps/dartwing-dev",
+    "branch": "develop",
+    "site": "dev.dartwing.localhost",
+    "site_admin_password": "admin",
+    "site_db_name": "dartwing_dev"
+  }
+]

@@ -1,0 +1,53 @@
+[
+  {
+    // Example configuration for Dartwing development environment
+    // NOTE: Keep each app's repository in a separate project folder
+    // Example: ~/projects/dartwing/ (not mixed with other apps)
+
+    // Required: Application name (used for app installation and worktree naming)
+    "app": "dartwing-dev",
+
+    // Required: Path to the git repository on the host machine
+    // This should be a separate project folder for this specific app
+    "source": "/home/user/projects/dartwing-repo",
+
+    // Optional: Target path for the worktree inside the container
+    // Default: /workspace/development/frappe-bench/apps/{app}
+    "target": "/workspace/apps/dartwing-dev",
+
+    // Optional: Git branch to checkout for this worktree
+    // If omitted, worktree creation is skipped
+    "branch": "develop",
+
+    // Optional: Site name to create for this app
+    // If omitted, no site is created for this app
+    "site": "dev.dartwing.localhost",
+
+    // Optional: Admin password for the site
+    // Default: "admin"
+    "site_admin_password": "admin",
+
+    // Optional: Database name for the site
+    // Default: {app} (with hyphens replaced by underscores)
+    "site_db_name": "dartwing_dev"
+  },
+  {
+    // Example configuration for Dartwing production environment
+    "app": "dartwing-prod",
+    "source": "/home/user/projects/dartwing-repo",
+    "target": "/workspace/apps/dartwing-prod",
+    "branch": "main",
+    "site": "prod.dartwing.localhost",
+    "site_admin_password": "admin",
+    "site_db_name": "dartwing_prod"
+  },
+  {
+    // Example configuration for another app (Frappe HRMS)
+    // Each app should have its own repository folder
+    "app": "hrms-dev",
+    "source": "/home/user/projects/hrms-repo",
+    "target": "/workspace/apps/hrms-dev",
+    "branch": "develop",
+    "site": "dev.hrms.localhost"
+  }
+]

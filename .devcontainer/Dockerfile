@@ -48,6 +48,7 @@ RUN apt-get update && apt-get install -y \
     jq \
     iputils-ping \
     net-tools \
+    cron \
     # User management
     sudo \
     # Shells

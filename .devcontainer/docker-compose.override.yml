@@ -52,6 +52,8 @@ services:
       - ~/.ssh/id_rsa_ado:/home/${USER:-vscode}/.ssh/id_rsa_ado:ro
       - ~/.ssh/id_rsa_ado.pub:/home/${USER:-vscode}/.ssh/id_rsa_ado.pub:ro
       - ~/.ssh/known_hosts:/home/${USER:-vscode}/.ssh/known_hosts:ro
+      # Full SSH directory mount (for agent persistence)
+      - ~/.ssh:/home/${USER:-vscode}/.ssh:cached
 
       # ========================================
       # Additional Personal Configurations (Optional)

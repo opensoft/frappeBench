@@ -14,6 +14,7 @@ if [ -f .devcontainer/.env ]; then
 fi
 
 FRAPPE_SITE_NAME=${FRAPPE_SITE_NAME:-site1.localhost}
+DB_NAME=${DB_NAME:-site1}
 ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
 DB_HOST=${DB_HOST:-mariadb}
 DB_PASSWORD=${DB_PASSWORD:-frappe}
@@ -36,6 +37,41 @@ bench_is_initialized() {
 }
 
 rebuild_bench() {
+    # Clean up any leftover temp benches from failed runs
+    rm -rf /workspace/development/tmp-bench-* || true
+    
+    if mountpoint -q "$BENCH_DIR/apps" || { [ -d "$BENCH_DIR/apps" ] && [ "$(ls -A "$BENCH_DIR/apps" 2>/dev/null)" != "" ]; }; then
+        log "$YELLOW" "⚠️  Apps directory present; performing non-destructive bench scaffold."
+        local tmp_name
+        tmp_name=$(mktemp -u /workspace/development/tmp-bench-XXXX)
+        pushd /workspace/development >/dev/null
+        bench init "$tmp_name" \
+            --frappe-branch "$FRAPPE_BRANCH" \
+            --python "$PYTHON_BIN" \
+            --skip-redis-config-generation \
+            --verbose
+        popd >/dev/null
+        mkdir -p "$BENCH_DIR"
+        (
+            cd "$tmp_name"
+            tar --exclude=apps -cf - .
+        ) | (
+            cd "$BENCH_DIR"
+            tar -xf -
+        )
+        # Copy apps from tmp bench to ensure frappe is up to date
+        tar -cf - -C "$tmp_name" apps | tar -xf - -C "$BENCH_DIR"
+        rm -rf "$tmp_name"
+        log "$GREEN" "  ✓ Bench scaffolded without touching apps."
+        cd "$BENCH_DIR"
+        find "$BENCH_DIR/env/bin/" -type f -exec sed -i "s|$tmp_name|$BENCH_DIR|g" {} \;
+        # Fix shebang to use venv python
+        find "$BENCH_DIR/env/bin/" -type f -exec sed -i "s|#!/usr/bin/env python|#!/$BENCH_DIR/env/bin/python|g" {} \;
+        cd "$BENCH_DIR/apps/frappe" && "$BENCH_DIR/env/bin/pip" install -e .
+        cd "$BENCH_DIR" && bench setup requirements
+        return
+    fi
+
     log "$YELLOW" "⚠️  Rebuilding bench directory..."
     rm -rf "$BENCH_DIR"
     mkdir -p /workspace/development
@@ -46,6 +82,7 @@ rebuild_bench() {
         --skip-redis-config-generation \
         --verbose
     cd "$BENCH_DIR"
+    "$BENCH_DIR/env/bin/bench" setup requirements
     log "$GREEN" "  ✓ Bench initialization complete."
 }
 
@@ -54,8 +91,13 @@ ensure_bench_ready() {
     if bench_is_initialized; then
         log "$GREEN" "✅ Bench detected at $BENCH_DIR (keeping existing files)"
         cd "$BENCH_DIR"
+        bench setup requirements
+        # Ensure frappe is installed in the venv
+        cd "$BENCH_DIR/apps/frappe" && "$BENCH_DIR/env/bin/pip" install -e .
+        export PATH="$BENCH_DIR/env/bin:$PATH"
     else
         rebuild_bench
+        export PATH="$BENCH_DIR/env/bin:$PATH"
     fi
 }
 
@@ -72,14 +114,18 @@ ensure_apps_txt() {
 }
 
 ensure_site() {
+    cd "$BENCH_DIR" || exit 1
     if [ ! -d "$BENCH_DIR/sites/$FRAPPE_SITE_NAME" ]; then
         log "$BLUE" "[Site] Creating $FRAPPE_SITE_NAME..."
         bench new-site "$FRAPPE_SITE_NAME" \
+            --db-name "$DB_NAME" \
+            --db-password "$DB_PASSWORD" \
             --mariadb-root-password "$DB_PASSWORD" \
             --admin-password "$ADMIN_PASSWORD" \
             --db-host "$DB_HOST" \
             --db-port 3306 \
             --no-mariadb-socket \
+            --force \
             --verbose
         log "$GREEN" "  ✓ Site created."
     else
@@ -123,6 +169,13 @@ PY
     fi
 }
 
+set_default_site() {
+    cd "$BENCH_DIR" || exit 1
+    log "$BLUE" "[Site] Setting default site to $FRAPPE_SITE_NAME..."
+    bench use "$FRAPPE_SITE_NAME"
+    log "$GREEN" "  ✓ Default site set."
+}
+
 validate_bench_start() {
     local log_file
     log_file=$(mktemp)
@@ -149,6 +202,7 @@ validate_bench_start() {
 }
 
 set_default_site() {
+    cd "$BENCH_DIR" || exit 1
     log "$BLUE" "[Site] Setting default site to $FRAPPE_SITE_NAME..."
     bench use "$FRAPPE_SITE_NAME"
     log "$GREEN" "  ✓ Default site set."
@@ -161,10 +215,39 @@ echo "========================================"
 log "$BLUE" "🚀 Frappe Bench Setup starting..."
 echo "========================================"
 
+# Prepare worktrees (non-fatal if config absent)
+if [ -x .devcontainer/setup-worktrees.sh ]; then
+    .devcontainer/setup-worktrees.sh --prepare || true
+fi
+
 ensure_bench_ready
 ensure_apps_txt
+
+# Wait for MariaDB to be ready before creating site
+log "$BLUE" "Waiting for MariaDB to be ready..."
+attempts=0
+max_attempts=60  # 5 minutes max wait
+until mysqladmin ping -h "$DB_HOST" -P "$DB_PORT" -u root -p"$DB_PASSWORD" --silent 2>/dev/null; do
+    if (( attempts >= max_attempts )); then
+        log "$YELLOW" "MariaDB not ready after $((max_attempts * 5)) seconds, continuing anyway..."
+        break
+    fi
+    log "$YELLOW" "MariaDB not ready, waiting... ($((attempts * 5))s elapsed)"
+    sleep 5
+    ((attempts++))
+done
+if (( attempts < max_attempts )); then
+    log "$GREEN" "MariaDB is ready."
+fi
+
 ensure_site
 ensure_common_site_config
+
+# Install apps/sites defined in worktree config (non-fatal if config absent)
+if [ -x .devcontainer/setup-worktrees.sh ]; then
+    .devcontainer/setup-worktrees.sh --install || true
+fi
+
 set_default_site
 
 if ! validate_bench_start; then
