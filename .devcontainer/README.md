@@ -58,6 +58,7 @@ Located in `.devcontainer/.env`:
 - `ADMIN_PASSWORD`: Administrator password (default: admin)
 - `DB_HOST`: MariaDB hostname (default: mariadb)
 - `DB_PASSWORD`: Database root password (default: frappe)
+- `CUSTOM_APPS`: Comma-separated list of apps to auto-install (see below)
 
 ### Ports
 - `8000`: Frappe web server (bench start)
@@ -131,17 +132,50 @@ redis-cli -h redis-socketio
 ```
 
 ### Adding Custom Apps
+
+**Option 1: Using Environment Variable (Recommended for initial setup)**
+
+Edit `.devcontainer/.env` before building container:
+```bash
+# Format: app_name:repo_url:branch or app_name:repo_url or just app_name
+CUSTOM_APPS=dartwing:https://github.com/opensoft/dartwing-frappe:develop,erpnext
+```
+
+Then rebuild container:
+- **VSCode**: Cmd/Ctrl+Shift+P → "Dev Containers: Rebuild Container"
+
+**Option 2: Manual Installation (for adding apps to existing container)**
+
 ```bash
 cd /workspace/development/frappe-bench
 
 # Get app from GitHub
 bench get-app https://github.com/frappe/erpnext
 
+# Or get specific branch
+bench get-app --branch develop https://github.com/frappe/erpnext
+
+# Or get from Frappe marketplace
+bench get-app erpnext
+
 # Install app to site
 bench --site site1.localhost install-app erpnext
 
-# Restart bench
-# Press Ctrl+C to stop bench start, then run it again
+# Restart bench (Ctrl+C then bench start)
+```
+
+**Option 3: Get App from Local Development Repo**
+
+```bash
+cd /workspace/development/frappe-bench
+
+# Clone your repo to apps directory
+cd apps
+git clone https://github.com/your-org/your-app
+cd ..
+
+# Install app to site
+bench --site site1.localhost install-app your-app
 ```
 
 ### Code Changes
@@ -149,6 +183,21 @@ bench --site site1.localhost install-app erpnext
 - Changes are live-reloaded automatically
 - For Python changes, restart `bench start`
 - For JS/CSS changes, run `bench build` or `bench watch`
+
+### Branch Switching
+```bash
+cd /workspace/development/frappe-bench/apps/your-app
+
+# Switch to different branch
+git checkout develop  # or main, or feature/xyz
+git pull
+
+# Go back to bench directory
+cd ../..
+
+# Restart bench to apply changes
+# Press Ctrl+C, then run: bench start
+```
 
 ## Troubleshooting
 

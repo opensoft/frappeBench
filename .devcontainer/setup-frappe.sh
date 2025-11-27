@@ -208,6 +208,52 @@ set_default_site() {
     log "$GREEN" "  ✓ Default site set."
 }
 
+get_custom_apps() {
+    cd "$BENCH_DIR" || exit 1
+    # Check if CUSTOM_APPS env var is set (comma-separated list)
+    if [ -n "${CUSTOM_APPS:-}" ]; then
+        log "$BLUE" "[Apps] Installing custom apps: $CUSTOM_APPS"
+        IFS=',' read -ra APPS <<< "$CUSTOM_APPS"
+        for app_spec in "${APPS[@]}"; do
+            app_spec=$(echo "$app_spec" | xargs)  # Trim whitespace
+            # Format: app_name:repo_url:branch or app_name:repo_url or just app_name
+            if [[ "$app_spec" == *":"* ]]; then
+                IFS=':' read -r app_name repo_url branch <<< "$app_spec"
+                if [ -d "$BENCH_DIR/apps/$app_name" ]; then
+                    log "$YELLOW" "[Apps] $app_name already exists, skipping"
+                    continue
+                fi
+                log "$BLUE" "[Apps] Getting $app_name from $repo_url"
+                if [ -n "$branch" ]; then
+                    bench get-app --branch "$branch" "$repo_url" || log "$YELLOW" "Failed to get $app_name"
+                else
+                    bench get-app "$repo_url" || log "$YELLOW" "Failed to get $app_name"
+                fi
+                # Install app to default site
+                if [ -d "$BENCH_DIR/apps/$app_name" ]; then
+                    log "$BLUE" "[Apps] Installing $app_name to $FRAPPE_SITE_NAME"
+                    bench --site "$FRAPPE_SITE_NAME" install-app "$app_name" || log "$YELLOW" "Failed to install $app_name"
+                fi
+            else
+                # Just app name - get from Frappe marketplace
+                if [ -d "$BENCH_DIR/apps/$app_spec" ]; then
+                    log "$YELLOW" "[Apps] $app_spec already exists, skipping"
+                    continue
+                fi
+                log "$BLUE" "[Apps] Getting $app_spec from Frappe marketplace"
+                bench get-app "$app_spec" || log "$YELLOW" "Failed to get $app_spec"
+                # Install app to default site
+                if [ -d "$BENCH_DIR/apps/$app_spec" ]; then
+                    log "$BLUE" "[Apps] Installing $app_spec to $FRAPPE_SITE_NAME"
+                    bench --site "$FRAPPE_SITE_NAME" install-app "$app_spec" || log "$YELLOW" "Failed to install $app_spec"
+                fi
+            fi
+        done
+    else
+        log "$BLUE" "[Apps] No custom apps specified in CUSTOM_APPS env var"
+    fi
+}
+
 #############################################
 # Main flow
 #############################################
@@ -215,12 +261,8 @@ echo "========================================"
 log "$BLUE" "🚀 Frappe Bench Setup starting..."
 echo "========================================"
 
-# Prepare worktrees (non-fatal if config absent)
-if [ -x .devcontainer/setup-worktrees.sh ]; then
-    .devcontainer/setup-worktrees.sh --prepare || true
-fi
-
 ensure_bench_ready
+get_custom_apps
 ensure_apps_txt
 
 # Wait for MariaDB to be ready before creating site
@@ -242,12 +284,6 @@ fi
 
 ensure_site
 ensure_common_site_config
-
-# Install apps/sites defined in worktree config (non-fatal if config absent)
-if [ -x .devcontainer/setup-worktrees.sh ]; then
-    .devcontainer/setup-worktrees.sh --install || true
-fi
-
 set_default_site
 
 if ! validate_bench_start; then

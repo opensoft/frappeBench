@@ -25,7 +25,7 @@ services:
       - ../:/workspace:cached
 
     ports:
-      - "8012:8012"
+      - "8012:8000"  # Host port 8012 → Container port 8000 (bench serve)
 
     command: sleep infinity
     networks:

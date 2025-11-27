@@ -2,243 +2,332 @@
 
 ## 🎯 Core Strategy
 
-Your devcontainer setup implements a **decoupled app development architecture** where:
+This devcontainer provides a **complete, containerized Frappe development environment** using Docker and VSCode. It follows standard Frappe best practices for app management and development workflows.
 
-1. **Frappe Bench** = Execution environment (runs in container)
-2. **Custom Apps** = External repositories (mounted into bench)
-3. **Zero Duplication** = One repo, multiple bench instances can share it
-4. **Instant Sync** = Changes in app repos immediately visible in running bench
+### Key Benefits
+1. **Reproducible Environment** - Identical setup across all developers
+2. **Zero Local Dependencies** - Everything runs in Docker containers
+3. **Full Frappe Stack** - MariaDB, Redis, Workers, Scheduler all included
+4. **Standard Workflow** - Uses native `bench` commands for all operations
+5. **Instant Dev Setup** - From clone to running in under 10 minutes
 
-## 🏗️ Three-Phase Setup
+---
 
-### Phase 0: Pre-Flight (Host Machine)
-- **Script**: `generate_mounts.py`
-- **Action**: Reads `mounts.json` → Generates `docker-compose.mounts.yml`
-- **Result**: Docker knows which app directories to mount
+## 🏗️ Architecture
 
-### Phase 1: Container Build
-- **Action**: Starts services (MariaDB, Redis, Frappe, Workers, etc.)
-- **Result**: Full Frappe stack running, waiting for bench initialization
-
-### Phase 2: Bench Initialization
-- **Script**: `setup-frappe.sh`
-- **Action**: Creates bench structure, preserves mounted apps, creates sites
-- **Result**: Working bench at `/workspace/development/frappe-bench`
-
-## 🌿 Branch Strategy
-
-### ✅ Current: Uses **"main"** for Production
-
+### Container Stack
 ```
-Production Branch:  main     ← Modern Git convention
-Development Branch: develop  ← Feature development
-Frappe Framework:   version-15 ← Stable release
+frappe-dev          Main development container (this is where you work)
+frappe-mariadb      Database server (MariaDB 10.6)
+frappe-redis-*      Cache, Queue, SocketIO (3x Redis instances)
+frappe-worker-*     Background job processors (3x workers)
+frappe-scheduler    Cron job scheduler
+frappe-socketio     Real-time WebSocket server
+frappe-nginx        Reverse proxy (optional, for production profile)
 ```
 
-**Evidence**: Your dartwing repo shows `remotes/origin/main` as the production branch.
-
-### 🔄 Future: Worktree Strategy (Not Yet Implemented)
-
-**Goal**: Run dev and prod branches simultaneously
-
+### File Structure
 ```
-Single Repo → Two Worktrees → Two Apps in Bench
-
-dartwing-frappe/
-├── .git/                                    # One repository
-└── development/frappe-bench/apps/
-    ├── dartwing-dev/   (develop branch)    # Development worktree
-    └── dartwing-prod/  (main branch)       # Production worktree
-
-Each with dedicated site:
-- dev.dartwing.localhost  → dartwing-dev app
-- prod.dartwing.localhost → dartwing-prod app
+/workspace/
+└── development/
+    └── frappe-bench/              # Frappe bench directory
+        ├── apps/                  # All Frappe apps
+        │   ├── frappe/            # Core framework (auto-installed)
+        │   └── your-app/          # Custom apps (via bench get-app)
+        ├── sites/                 # Frappe sites
+        │   ├── site1.localhost/   # Default site
+        │   └── apps.txt           # Installed apps list
+        ├── env/                   # Python virtual environment
+        ├── config/                # Bench configuration
+        └── logs/                  # Application logs
 ```
 
-**Status**:
-- ✅ Scripts ready (`setup-worktrees.sh`)
-- ⚠️ Not configured (no `apps.worktrees.yml` exists)
-- ✅ Current direct mount works fine for single-branch development
+---
 
-## 📊 Current Configuration
+## 📦 App Management Philosophy
 
-### What You Have Now
+### Standard Frappe Approach (What This Setup Uses)
 
-```json
-// mounts.json
-[
-  {
-    "app": "dartwing",
-    "source": "/home/brett/projects/dartwingers/dartwing/dartwing-frappe/development/frappe-bench/apps/dartwing"
-  }
-]
-```
-
-**Result**:
-```
-Host Path (your app repo)
-  ↓ (bind mount)
-Container Path: /workspace/development/frappe-bench/apps/dartwing
-  ↓ (used by)
-Frappe Bench (version-15) running site1.localhost
-```
-
-### How It Works
-
-```mermaid
-graph LR
-    A[Edit File on Host] --> B[Bind Mount Updates File in Container]
-    B --> C[Frappe Detects Change]
-    C --> D{File Type?}
-    D -->|Python| E[Restart bench]
-    D -->|JS/CSS| F[bench build or auto-reload]
-    E --> G[Changes Live]
-    F --> G
-```
-
-## 🎁 Key Benefits
-
-1. **One Repo, Multiple Benches** - Same app code can be mounted to different benches
-2. **Instant Updates** - No git pull needed, files sync via bind mount
-3. **Branch Independence** - Bench can run Frappe v15 while app runs on any branch
-4. **No Permission Conflicts** - Container user matches host user (same UID/GID)
-5. **Development Ready** - Edit in VSCode, test in browser, commit from anywhere
-
-## 🔍 Verification Checklist
-
-I verified the following about your setup:
-
-### ✅ Confirmed Working
-- [x] Full Frappe stack defined (MariaDB, Redis x3, Workers x3, Scheduler, SocketIO)
-- [x] Dartwing app mounted from external repo
-- [x] Branch: **main** used for production (modern convention)
-- [x] User UID/GID matching for permission safety
-- [x] Setup scripts are idempotent (safe to run multiple times)
-- [x] Smart bench scaffolding (preserves mounted apps during init)
-
-### ⚠️ Future Enhancement Ready
-- [ ] Worktree implementation (scripts exist, not configured)
-- [ ] Multiple worktrees per app (dev + prod)
-- [ ] Dedicated sites per worktree
-
-### ❌ Not Yet Implemented
-- No `apps.worktrees.yml` configuration file
-- No automatic dev/prod worktree creation
-- Currently using simpler direct mount approach
-
-## 🚀 Common Workflows
-
-### Developing Dartwing App
+Apps are cloned directly into the bench using native Frappe tools:
 
 ```bash
-# On host or in container - both work!
-cd /home/brett/projects/dartwingers/dartwing/dartwing-frappe/development/frappe-bench/apps/dartwing
+# Clone app into bench
+bench get-app https://github.com/your-org/your-app
 
-# Edit files in VSCode
-vim dartwing/api/v1.py
+# Or clone specific branch
+bench get-app --branch develop https://github.com/your-org/your-app
 
-# Changes are instantly in container!
-# In container terminal:
+# Install to site
+bench --site site1.localhost install-app your-app
+```
+
+**Why this is simple:**
+- ✅ Works exactly as documented in Frappe docs
+- ✅ No custom scripting or workarounds needed
+- ✅ Compatible with all bench commands
+- ✅ Easy to troubleshoot (standard setup)
+- ✅ Clear separation: one app = one folder
+
+**Trade-offs:**
+- ⚠️ One branch active per app at a time
+- ⚠️ Use `git checkout` to switch branches
+- ⚠️ Cannot run dev and prod simultaneously (use separate sites instead)
+
+---
+
+## 🚀 Quick Start
+
+### 1. Clone and Configure
+
+```bash
+# Clone this repo
+git clone <this-repo-url>
+cd frappeBench
+
+# (Optional) Configure custom apps
+cp .devcontainer/.env.example .devcontainer/.env
+# Edit .env and set CUSTOM_APPS if desired
+```
+
+### 2. Open in VSCode
+
+```
+File → Open Folder → frappeBench/
+Click "Reopen in Container" when prompted
+```
+
+### 3. Wait for Setup
+
+First time: ~10 minutes
+- Builds Docker image
+- Initializes Frappe bench
+- Creates default site
+- Installs custom apps (if configured)
+
+### 4. Start Developing
+
+```bash
 cd /workspace/development/frappe-bench
-bench restart  # or Ctrl+C and bench start
+bench start
+```
 
-# Test at http://localhost:8000
+Access at: http://localhost:8000 (admin/admin)
 
-# Commit from host or container
+---
+
+## 🔧 Common Workflows
+
+### Adding Apps
+
+**Method 1: Environment Variable (before container build)**
+
+Edit `.devcontainer/.env`:
+```bash
+CUSTOM_APPS=dartwing:https://github.com/opensoft/dartwing-frappe:develop,erpnext
+```
+
+Rebuild container: VSCode → Rebuild Container
+
+**Method 2: Manual (after container is running)**
+
+```bash
+cd /workspace/development/frappe-bench
+bench get-app https://github.com/opensoft/dartwing-frappe
+bench --site site1.localhost install-app dartwing
+```
+
+### Switching Branches
+
+```bash
+cd apps/your-app
+git checkout develop  # or any branch
+git pull
+cd ../..
+bench restart
+```
+
+### Creating Features
+
+```bash
+# Make changes in apps/your-app/
+# Python changes: Restart bench (Ctrl+C, then bench start)
+# JS/CSS changes: bench build (or bench watch for auto-rebuild)
+
+# Commit
+cd apps/your-app
 git add .
-git commit -m "Add new API endpoint"
+git commit -m "Add feature X"
 git push
 ```
 
-### Adding New App
-
-```json
-// Edit mounts.json
-[
-  {
-    "app": "hrms",
-    "source": "/home/brett/projects/frappe-apps/hrms"
-  }
-]
-```
+### Running Tests
 
 ```bash
-# Rebuild container (regenerates mounts)
-# VSCode: Dev Containers: Rebuild Container
-
-# Install app to site
-bench --site site1.localhost install-app hrms
+bench --site site1.localhost run-tests --app your-app
 ```
 
-## 📈 Why This Setup is Better Than Traditional
+---
 
-| Aspect | Traditional Frappe Dev | This Setup |
-|--------|------------------------|------------|
-| **Repo Copies** | One per bench | One shared by all benches |
-| **Sync Method** | git pull | Instant (bind mount) |
-| **Disk Usage** | High (duplicated repos) | Low (one copy) |
-| **Branch Switching** | git checkout (one at a time) | Worktrees (multiple simultaneously) |
-| **Environment Setup** | Manual dependencies | Containerized, reproducible |
-| **Permission Issues** | Common (root vs user) | Solved (UID/GID matching) |
+## 📊 How Setup Works
 
-## 🎓 Key Concepts
+### Phase 1: initializeCommand (Host)
+- Cleans up temporary extension files
 
-### Bind Mount
-Direct file system mapping: host file = container file (same inode). Changes propagate instantly, no copying.
+### Phase 2: Container Build
+- Installs Ubuntu 22.04 + Python 3.10 + Node 20.x
+- Installs Frappe dependencies
+- Creates user matching host UID/GID (no permission issues!)
+- Installs zsh + Oh My Zsh
+- Starts all service containers (MariaDB, Redis, etc.)
 
-### Git Worktree
-Multiple working directories for one repository, each on different branches. Shares `.git` objects, saves disk space.
+### Phase 3: postCreateCommand (Container)
+- Runs `setup-frappe.sh`:
+  1. Initializes Frappe bench (if not exists)
+  2. Gets custom apps (from CUSTOM_APPS env var)
+  3. Creates default site
+  4. Configures Redis connections
+  5. Validates bench health
 
-### Bench Independence
-Frappe framework version (e.g., version-15) is independent from custom app branches (e.g., dartwing on main).
+### Phase 4: postAttachCommand
+- Prints success message
+- Environment ready for development
 
-### Service Orchestration
-Docker Compose manages dependencies: MariaDB starts → Redis starts → Frappe starts → Workers start.
+---
 
-### Idempotent Scripts
-Safe to run multiple times. If bench exists, keeps it. If site exists, keeps it. No destructive actions.
+## 🎛️ Configuration
 
-## 📝 Next Steps (Optional)
+### Environment Variables (.devcontainer/.env)
 
-If you want to enable simultaneous dev/prod branch testing:
+```bash
+# Project settings
+PROJECT_NAME=frappeBench
+FRAPPE_SITE_NAME=site1.localhost
+ADMIN_PASSWORD=admin
 
-1. **Create** `apps.worktrees.yml`:
-   ```yaml
-   apps:
-     - name: dartwing
-       repo_root: /home/brett/projects/dartwingers/dartwing/dartwing-frappe
-       dev_branch: develop
-       prod_branch: main
-   ```
+# Custom apps (comma-separated)
+# Format: app:repo:branch or app:repo or just app
+CUSTOM_APPS=
 
-2. **Run** worktree setup:
-   ```bash
-   .devcontainer/setup-worktrees.sh --prepare
-   ```
+# Resources
+CONTAINER_MEMORY=4g
+CONTAINER_CPUS=2
 
-3. **Update** `mounts.json` to reference worktrees
+# Database
+DB_PASSWORD=frappe
+```
 
-4. **Rebuild** container to apply new mounts
+### Container Resources
 
-Otherwise, your current direct mount setup works perfectly for single-branch development!
+Adjust in `.env`:
+```bash
+CONTAINER_MEMORY=8g  # Increase for large databases
+CONTAINER_CPUS=4     # Increase for parallel builds
+```
+
+---
+
+## 🐛 Troubleshooting
+
+### Container Won't Start
+```bash
+docker compose -f .devcontainer/docker-compose.yml down
+docker compose -f .devcontainer/docker-compose.yml up -d
+# Or in VSCode: Rebuild Container
+```
+
+### App Not Found
+```bash
+# Check apps.txt
+cat sites/apps.txt
+
+# Add app if missing
+echo "your-app" >> sites/apps.txt
+
+# Install to site
+bench --site site1.localhost install-app your-app
+```
+
+### Database Connection Failed
+```bash
+# Check MariaDB is healthy
+docker ps --filter "name=mariadb"
+
+# Test connection
+docker exec frappe-dev mysql -h mariadb -u root -pfrappe -e "SHOW DATABASES;"
+
+# Restart MariaDB
+docker restart frappe-mariadb
+```
+
+### Bench Validation Failed
+```bash
+# Check bench health
+cd /workspace/development/frappe-bench
+bench doctor
+
+# Rebuild bench if corrupted
+rm -rf /workspace/development/frappe-bench
+# Rebuild container to reinitialize
+```
+
+---
+
+## 🌟 Why This Approach
+
+### Rejected Alternatives
+
+#### ❌ Git Worktrees with Different Folder Names
+**Problem**: Frappe requires `folder name == app name == Python module name`
+- Cannot use `dartwing-dev` and `dartwing-prod` folders
+- Python module imports would fail (hyphens not allowed)
+- No configuration to override this hardcoded assumption
+
+**Research**: See ARCHITECTURE.md for detailed technical analysis
+
+#### ❌ Symbolic Links
+**Problem**: Added complexity for minimal benefit
+- Still only one active environment at a time
+- Fragile (symlink breaks, bench breaks)
+- Requires switching script and manual management
+
+#### ❌ Separate Benches
+**Problem**: Resource intensive
+- 2x disk space (duplicate bench directories)
+- 2x memory (duplicate service containers)
+- More complex Docker Compose setup
+
+### ✅ Standard Frappe Clone (Current Approach)
+
+**Benefits**:
+- Works exactly as documented
+- No custom infrastructure to maintain
+- Easy onboarding for new developers
+- Compatible with all Frappe tools
+- Simplest mental model
+
+**Acceptable Trade-offs**:
+- Only one branch per app at a time
+- Use git checkout to switch branches
+- Testing multiple versions requires separate sites (still faster than separate benches)
+
+---
 
 ## 📚 Documentation
 
-- **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Complete technical deep-dive (9000+ words)
 - **[README.md](./README.md)** - Quick start and common commands
-- **[.devcontainer/](.)** - All configuration files with inline comments
+- **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Technical deep-dive
+- **[Dockerfile](./Dockerfile)** - Container image definition
+- **[docker-compose.yml](./docker-compose.yml)** - Service orchestration
+- **[setup-frappe.sh](./setup-frappe.sh)** - Bench initialization script
+
+---
 
 ## 🎉 Summary
 
-Your setup achieves the goal of:
-- ✅ **One copy of repo** - Shared across benches
-- ✅ **Immediate updates** - Via bind mounts
-- ✅ **Independent branches** - Bench and apps decouple
-- ✅ **Defaults to main** - Production branch (not master)
-- ✅ **Future-ready** - Worktree infrastructure exists
+This devcontainer provides a **production-ready Frappe development environment** using industry-standard Docker practices and native Frappe tooling. No workarounds, no hacks, just a clean, reproducible setup that works.
 
-**Production Branch**: `main` ← You asked me to verify this, and yes, it's `main`.
+**Getting Started**: Clone → Open in VSCode → Wait 10 minutes → Start coding
 
-**Worktrees**: Two per app (dev + prod) when configured, currently one direct mount.
+**App Management**: `bench get-app` to add, `git checkout` to switch branches
 
-The architecture is elegant, efficient, and production-ready! 🚀
+**Philosophy**: Simple > Complex. Standard > Custom. Working > Perfect.
