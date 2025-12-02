@@ -85,6 +85,9 @@ RUN npm install -g yarn
 RUN npm install -g @anthropic-ai/claude-code @openai/codex || \
     echo "AI CLI tools installation failed, skipping"
 
+# Install OpenSpec for spec-driven development
+RUN npm install -g @fission-ai/openspec@latest
+
 # Install Python packages for Frappe development
 RUN pip install --upgrade pip \
     && pip install \
@@ -102,7 +105,8 @@ RUN pip install --upgrade pip \
     pylint \
     pytest \
     ipython \
-    frappe-bench
+    frappe-bench \
+    uv
 
 # ========================================
 # USER SETUP - Match host UID/GID
@@ -126,9 +130,12 @@ USER $USER_NAME
 RUN curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | sh -s -- --unattended || \
     echo "Oh My Zsh installation failed, using default zsh"
 
-# Add bench to PATH
-RUN echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && \
-    echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
+# Install spec-kit (specify-cli) for the user
+RUN uv tool install specify-cli --from git+https://github.com/github/spec-kit.git
+
+# Add bench and uv tools to PATH
+RUN echo 'export PATH="$HOME/.local/bin:$HOME/.local/share/uv/bin:$PATH"' >> ~/.bashrc && \
+    echo 'export PATH="$HOME/.local/bin:$HOME/.local/share/uv/bin:$PATH"' >> ~/.zshrc
 
 # Override bash profile to run zsh instead of bash
 RUN echo '# Force zsh when bash is requested' >> ~/.bash_profile && \
