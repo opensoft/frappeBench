@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Frappe
+development/
+sites/*/private/backups/
+sites/*/private/files/
+sites/assets/
+node_modules/
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.code-workspace
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+*:Zone.Identifier
+
+# Environment
+.devcontainer/.env
+.devcontainer/docker-compose.mounts.yml
