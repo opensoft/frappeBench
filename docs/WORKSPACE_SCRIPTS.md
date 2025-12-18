@@ -8,14 +8,26 @@ These scripts provide intelligent management of Frappe development workspaces wi
 
 ## Scripts
 
-### Main Scripts
+### Intelligent Router
 
-#### `new-workspace.sh`
-Creates a new development workspace with automatic configuration.
+#### `new-workspace.sh` (frappeBench only)
+Intelligent workspace creator that determines which type to create.
+
+When run in the frappeBench repository, this script:
+- Presents a menu of available workspace types
+- Uses AI to understand user needs (if credentials available)
+- Routes to the appropriate workspace creator
+- Currently supports: Frappe
+- Extensible for future workspace types (Flutter, Django, etc.)
+
+### Main Scripts (Frappe-Specific)
+
+#### `new-frappe-workspace.sh`
+Creates a new Frappe development workspace with automatic configuration.
 
 **Usage:**
 ```bash
-scripts/new-workspace.sh [WORKSPACE_NAME]
+scripts/new-frappe-workspace.sh [WORKSPACE_NAME]
 ```
 
 **Features:**
@@ -29,18 +41,18 @@ scripts/new-workspace.sh [WORKSPACE_NAME]
 **Example:**
 ```bash
 # Auto-detect next workspace name
-./scripts/new-workspace.sh
+./scripts/new-frappe-workspace.sh
 
 # Create specific workspace
-./scripts/new-workspace.sh alpha
+./scripts/new-frappe-workspace.sh alpha
 ```
 
-#### `update-workspace.sh`
-Updates an existing workspace to the latest devcontainer template without deletion.
+#### `update-frappe-workspace.sh`
+Updates an existing Frappe workspace to the latest devcontainer template without deletion.
 
 **Usage:**
 ```bash
-scripts/update-workspace.sh [WORKSPACE_NAME|-all]
+scripts/update-frappe-workspace.sh [WORKSPACE_NAME|-all]
 ```
 
 **Features:**
@@ -53,18 +65,18 @@ scripts/update-workspace.sh [WORKSPACE_NAME|-all]
 **Example:**
 ```bash
 # Update specific workspace
-./scripts/update-workspace.sh alpha
+./scripts/update-frappe-workspace.sh alpha
 
 # Update all workspaces
-./scripts/update-workspace.sh -all
+./scripts/update-frappe-workspace.sh -all
 ```
 
-#### `delete-workspace.sh`
-Safely deletes a workspace with confirmation and backup.
+#### `delete-frappe-workspace.sh`
+Safely deletes a Frappe workspace with confirmation and backup.
 
 **Usage:**
 ```bash
-scripts/delete-workspace.sh [WORKSPACE_NAME]
+scripts/delete-frappe-workspace.sh [WORKSPACE_NAME]
 ```
 
 **Features:**
@@ -77,7 +89,7 @@ scripts/delete-workspace.sh [WORKSPACE_NAME]
 
 **Example:**
 ```bash
-./scripts/delete-workspace.sh alpha
+./scripts/delete-frappe-workspace.sh alpha
 ```
 
 ### Utility Libraries
@@ -137,8 +149,13 @@ SCRIPT_NAME="new-workspace.sh"
 
 These scripts are maintained in two locations:
 
-1. **Primary:** `/projects/dartwing/dartwing-frappe/scripts/`
-2. **Shared:** `/projects/workBenches/devBenches/frappeBench/scripts/`
+1. **Primary (Frappe-specific):** `/projects/dartwing/dartwing-frappe/scripts/`
+   - Contains: new-frappe-workspace.sh, update-frappe-workspace.sh, delete-frappe-workspace.sh
+   - Maintained by dartwing project
+
+2. **Shared (Multi-purpose):** `/projects/workBenches/devBenches/frappeBench/scripts/`
+   - Contains: Intelligent new-workspace.sh router + all Frappe scripts
+   - Serves as central hub for workspace management across projects
 
 This allows users to clone either repository and have access to the workspace scripts.
 
@@ -147,7 +164,7 @@ This allows users to clone either repository and have access to the workspace sc
 Use the sync helper to update the shared copy:
 
 ```bash
-scripts/sync-to-devbench.sh
+scripts/sync-frappe-workspace-to-devbench.sh
 ```
 
 Features:
