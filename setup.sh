@@ -5,5 +5,5 @@
 set -euo pipefail
 
 echo "Setting up Git worktrees on host..."
-bash .devcontainer/setup-worktrees.sh --prepare
+bash scripts/setup-worktrees.sh --prepare
 echo "Worktree setup complete. You can now start the Dev Container."

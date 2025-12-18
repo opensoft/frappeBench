@@ -114,8 +114,8 @@
     "env": "cp -n .devcontainer/.env.example .devcontainer/.env || true",
     "cleanup": "rm -rf /home/${localEnv:USER}/.vscode-server/extensions/.* 2>/dev/null || true",
     "fix-claude-logo": "mkdir -p /home/${localEnv:USER}/.vscode-server/extensions/anthropic.claude-code-*/resources/ 2>/dev/null && cp .devcontainer/assets/claude-logo.svg /home/${localEnv:USER}/.vscode-server/extensions/anthropic.claude-code-*/resources/ 2>/dev/null || true",
-    "setup": "bash .devcontainer/setup-frappe.sh",
-    "stack": "bash .devcontainer/setup_stack.sh"
+    "setup": "bash scripts/setup-frappe.sh",
+    "stack": "bash scripts/setup_stack.sh"
   },
   "postAttachCommand": "echo 'Connected to Frappe development environment'"
 }

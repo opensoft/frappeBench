@@ -1,239 +1,107 @@
 #!/bin/bash
+# Intelligent workspace creator - determines which workspace type to create
+# Uses AI to understand what the user needs, then routes to appropriate script
+
 set -e
 
-# Script metadata for version tracking
+# Script metadata
 SCRIPT_VERSION="1.0.0"
 SCRIPT_NAME="new-workspace.sh"
 
-# Source utility libraries
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/lib/common.sh"
-source "${SCRIPT_DIR}/lib/git-project.sh"
-source "${SCRIPT_DIR}/lib/ai-provider.sh"
-source "${SCRIPT_DIR}/lib/ai-assistant.sh"
+# Colors
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+RED='\033[0;31m'
+NC='\033[0m'
 
-# Configuration - project-specific repos will be detected
-FRAPPE_REPO=""  # Will be detected from git remote
-APP_REPO=""     # Will be detected based on project type
+# Log functions
+log_info() { echo -e "${BLUE}ℹ${NC} $*"; }
+log_success() { echo -e "${GREEN}✓${NC} $*"; }
+log_warn() { echo -e "${YELLOW}⚠${NC} $*"; }
+log_error() { echo -e "${RED}✗${NC} $*" >&2; }
 
-# NATO phonetic alphabet for workspace naming
-NATO_ALPHABET=(alpha bravo charlie delta echo foxtrot golf hotel india juliet kilo lima mike november oscar papa quebec romeo sierra tango uniform victor whiskey xray yankee zulu)
-
-# Function to get next workspace name
-get_next_workspace_name() {
-    local project_root="$1"
-    local workspaces_dir="${project_root}/workspaces"
-    
-    # If no workspaces exist, return first name
-    if [ ! -d "$workspaces_dir" ] || [ -z "$(ls -A "$workspaces_dir" 2>/dev/null)" ]; then
-        echo "${NATO_ALPHABET[0]}"
-        return
-    fi
-    
-    # Find all NATO phonetic workspace names
-    local existing_workspaces=()
-    for dir in "${workspaces_dir}"/*; do
-        if [ -d "$dir" ]; then
-            local basename=$(basename "$dir")
-            # Check if it's a NATO phonetic name
-            for nato_name in "${NATO_ALPHABET[@]}"; do
-                if [ "$basename" = "$nato_name" ]; then
-                    existing_workspaces+=("$basename")
-                    break
-                fi
-            done
-        fi
-    done
-    
-    # Find the last NATO name in sequence
-    local last_index=-1
-    for i in "${!NATO_ALPHABET[@]}"; do
-        local nato_name="${NATO_ALPHABET[$i]}"
-        for existing in "${existing_workspaces[@]}"; do
-            if [ "$existing" = "$nato_name" ]; then
-                last_index=$i
-            fi
-        done
-    done
-    
-    # Return next name in sequence
-    local next_index=$((last_index + 1))
-    if [ $next_index -lt ${#NATO_ALPHABET[@]} ]; then
-        echo "${NATO_ALPHABET[$next_index]}"
-    else
-        echo -e "${RED}Error: All NATO phonetic names exhausted!${NC}" >&2
-        return 1
-    fi
+die() {
+    log_error "$*"
+    exit 1
 }
 
-# Initialize AI assistant (optional)
-init_ai_assistant
+# Determine script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-# Detect project context from current directory
-log_section "New Workspace Creator"
-detect_project_context || die "Failed to detect project context"
-display_project_context
+echo ""
+echo -e "${BLUE}=========================================="
+echo "Workspace Creator (Intelligent Router v${SCRIPT_VERSION})"
+echo -e "==========================================${NC}"
+echo ""
 
-# Parse arguments
-WORKSPACE_NAME="${1:-}"
-
-# If no workspace name provided, auto-detect next one
-if [ -z "$WORKSPACE_NAME" ]; then
-    WORKSPACE_NAME=$(get_next_workspace_name "$GIT_ROOT")
-    if [ $? -ne 0 ]; then
-        die "Failed to generate next workspace name"
+# Check for AI support (source the AI provider library if available)
+AI_AVAILABLE=false
+if [ -f "${SCRIPT_DIR}/lib/ai-provider.sh" ]; then
+    source "${SCRIPT_DIR}/lib/common.sh" 2>/dev/null || true
+    source "${SCRIPT_DIR}/lib/ai-provider.sh" 2>/dev/null || true
+    
+    if command -v get_primary_provider >/dev/null 2>&1; then
+        provider=$(get_primary_provider 2>/dev/null) || true
+        if [ -n "$provider" ]; then
+            AI_AVAILABLE=true
+            log_success "AI support available ($provider)"
+        fi
     fi
-    log_info "No workspace name provided, auto-detected next: ${WORKSPACE_NAME}"
-    echo ""
 fi
 
-# Determine app repository based on project type
-case "$PROJECT_TYPE" in
-    dartwing)
-        APP_REPO="git@github.com:opensoft/frappe-app-dartwing.git"
+# If no arguments provided and AI is available, ask user what they need
+if [ $# -eq 0 ] && [ "$AI_AVAILABLE" = true ]; then
+    echo ""
+    log_info "What type of workspace do you want to create?"
+    echo ""
+    echo "  1. Frappe (ERP framework)"
+    echo "  2. Custom workspace"
+    echo ""
+    echo -ne "${YELLOW}Select workspace type [1-2]: ${NC}"
+    read -r choice
+    
+    case "$choice" in
+        1)
+            WORKSPACE_TYPE="frappe"
+            ;;
+        2)
+            echo -ne "${YELLOW}Enter custom workspace name (optional): ${NC}"
+            read -r WORKSPACE_NAME
+            if [ -n "$WORKSPACE_NAME" ]; then
+                log_info "Custom workspace not yet supported"
+                exit 1
+            fi
+            ;;
+        *)
+            log_error "Invalid choice"
+            exit 1
+            ;;
+    esac
+else
+    # Try to determine workspace type from context or arguments
+    WORKSPACE_TYPE="frappe"  # Default to frappe for now
+    WORKSPACE_NAME="${1:-}"
+fi
+
+# Route to appropriate script
+case "$WORKSPACE_TYPE" in
+    frappe)
+        log_info "Creating Frappe workspace..."
+        
+        if [ ! -f "${SCRIPT_DIR}/new-frappe-workspace.sh" ]; then
+            die "Frappe workspace script not found: ${SCRIPT_DIR}/new-frappe-workspace.sh"
+        fi
+        
+        # Pass through arguments to the specific script
+        if [ -n "$WORKSPACE_NAME" ]; then
+            exec "${SCRIPT_DIR}/new-frappe-workspace.sh" "$WORKSPACE_NAME"
+        else
+            exec "${SCRIPT_DIR}/new-frappe-workspace.sh"
+        fi
         ;;
     *)
-        log_warn "Unknown project type: $PROJECT_TYPE - using auto-detection for app repo"
-        # Try to find app in workspace or skip if not needed
+        die "Unknown workspace type: $WORKSPACE_TYPE"
         ;;
 esac
-
-NEW_DIR="${WORKSPACES_DIR}/${WORKSPACE_NAME}"
-
-log_info "Configuration:"
-log_info "  Workspace name: ${WORKSPACE_NAME}"
-log_info "  New directory: ${NEW_DIR}"
-echo ""
-
-# Validate AI before proceeding
-validate_workspace_operation "new" "$WORKSPACE_NAME" "$PROJECT_TYPE"
-
-# Step 1: Create new workspace subdirectory
-log_subsection "[1/4] Creating new workspace directory..."
-if [ -d "$NEW_DIR" ]; then
-    log_error "Directory ${NEW_DIR} already exists!"
-    exit 1
-fi
-
-mkdir -p "${NEW_DIR}/bench/apps"
-mkdir -p "${NEW_DIR}/scripts"
-log_success "Workspace directory created"
-echo ""
-
-# Step 2: Copy devcontainer template
-log_subsection "[2/4] Setting up devcontainer configuration..."
-if [ ! -d "${GIT_ROOT}/devcontainer.example" ]; then
-    log_error "devcontainer.example folder not found!"
-    exit 1
-fi
-
-cp -r "${GIT_ROOT}/devcontainer.example" "${NEW_DIR}/.devcontainer"
-# Link workspace scripts to shared versions in repo (mounted at /repo in container)
-ln -s "/repo/scripts/init-bench.sh" "${NEW_DIR}/scripts/init-bench.sh"
-ln -s "/repo/scripts/setup-workspace.sh" "${NEW_DIR}/scripts/setup-workspace.sh"
-log_success "Devcontainer template copied"
-log_success "Init bench script linked"
-log_success "Setup workspace script linked"
-
-# Calculate unique port based on NATO alphabet index for sequential assignment
-BASE_PORT=8201
-# Find the index of workspace name in NATO alphabet
-NATO_INDEX=-1
-for i in "${!NATO_ALPHABET[@]}"; do
-    if [ "${NATO_ALPHABET[$i]}" = "$WORKSPACE_NAME" ]; then
-        NATO_INDEX=$i
-        break
-    fi
-done
-
-if [ $NATO_INDEX -eq -1 ]; then
-    # Not a NATO name, fall back to hash-based port
-    echo -e "${YELLOW}  → Custom workspace name, using hash-based port${NC}"
-    PORT_OFFSET=$(echo -n "$WORKSPACE_NAME" | cksum | cut -d' ' -f1)
-    HOST_PORT=$((BASE_PORT + (PORT_OFFSET % 50)))
-else
-    # Sequential port based on NATO index (alpha=8201, bravo=8202, etc.)
-    HOST_PORT=$((BASE_PORT + NATO_INDEX))
-fi
-
-# Update .devcontainer/.env with workspace-specific settings
-cat > "${NEW_DIR}/.devcontainer/.env" << EOF
-# Workspace: ${WORKSPACE_NAME}
-CODENAME=${WORKSPACE_NAME}
-CONTAINER_NAME=dartwing-frappe-${WORKSPACE_NAME}
-COMPOSE_PROJECT_NAME=dartwing-frappe-${WORKSPACE_NAME}
-HOST_PORT=${HOST_PORT}
-
-# User configuration
-USER=${USER}
-UID=${UID}
-GID=${GID}
-
-# Database configuration (uses existing frappe-mariadb container)
-DB_HOST=frappe-mariadb
-DB_PORT=3306
-DB_PASSWORD=frappe
-DB_NAME=dartwing_${WORKSPACE_NAME}
-
-# Redis configuration (uses existing frappe redis containers)
-REDIS_CACHE=frappe-redis-cache:6379
-REDIS_QUEUE=frappe-redis-queue:6379
-REDIS_SOCKETIO=frappe-redis-socketio:6379
-
-# Frappe site configuration
-SITE_NAME=${WORKSPACE_NAME}.localhost
-ADMIN_PASSWORD=admin
-
-# App configuration
-APP_BRANCH=main
-
-# Bench configuration
-FRAPPE_BENCH_PATH=/workspace/bench
-EOF
-log_success "Devcontainer environment configured"
-log_info "  Container: dartwing-frappe-${WORKSPACE_NAME}"
-log_info "  Port: ${HOST_PORT}"
-echo ""
-
-# Step 3: Update devcontainer.json name
-log_subsection "[3/4] Customizing devcontainer settings..."
-sed -i "s/WORKSPACE_NAME/${WORKSPACE_NAME}/g" "${NEW_DIR}/.devcontainer/devcontainer.json"
-log_success "Devcontainer name updated"
-echo ""
-
-# Step 4: Clone app repository (if configured)
-log_subsection "[4/4] Setting up app repository..."
-if [ -n "$APP_REPO" ]; then
-    APP_NAME="dartwing"
-    if [ ! -d "${NEW_DIR}/bench/apps/${APP_NAME}" ]; then
-        log_info "  Cloning from GitHub..."
-        if git clone "$APP_REPO" "${NEW_DIR}/bench/apps/${APP_NAME}"; then
-            log_success "${APP_NAME} app cloned"
-        else
-            log_warn "Failed to clone ${APP_NAME} app - you may need to clone manually"
-        fi
-    else
-        log_warn "${APP_NAME} app already exists, skipping"
-    fi
-else
-    log_info "  No app repository configured for this project type"
-fi
-echo ""
-
-log_section "New Workspace Created!"
-log_info "Workspace Details:"
-log_info "  Name: ${WORKSPACE_NAME}"
-log_info "  Location: ${NEW_DIR}"
-log_info "  Bench: ${NEW_DIR}/bench"
-log_info "  Container: dartwing-frappe-${WORKSPACE_NAME}"
-log_info "  Port: ${HOST_PORT}"
-echo ""
-log_info "Next Steps:"
-log_info "  1. cd ${NEW_DIR}"
-log_info "  2. code . (open workspace in VSCode)"
-log_info "  3. Click 'Reopen in Container' when prompted"
-log_info "  4. Access at: http://localhost:${HOST_PORT}"
-echo ""
-
-# Report success to AI if available
-report_success_to_ai "create" "$WORKSPACE_NAME"
