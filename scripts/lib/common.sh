@@ -1,6 +1,12 @@
 #!/bin/bash
-# Common utility functions for workspace management scripts
+# Common utility functions for all scripts
 # Version: 1.0.0
+
+# Guard against re-sourcing
+if [ -n "$_COMMON_SOURCED" ]; then
+    return 0
+fi
+_COMMON_SOURCED=1
 
 # Colors for output
 GREEN='\033[0;32m'

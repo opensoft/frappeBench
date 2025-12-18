@@ -5,8 +5,8 @@
 # Source common functions (guard against re-sourcing)
 if [ -z "$_AI_PROVIDER_SOURCED" ]; then
     _AI_PROVIDER_SOURCED=1
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    source "${SCRIPT_DIR}/common.sh"
+    # Use absolute path directly without modifying SCRIPT_DIR
+    source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 fi
 
 # List of credential locations to check for each provider

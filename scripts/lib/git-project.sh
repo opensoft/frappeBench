@@ -2,9 +2,12 @@
 # Git project detection and validation utility
 # Version: 1.0.0
 
-# Source common functions
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/common.sh"
+# Source common functions (guard against re-sourcing)
+if [ -z "$_GIT_PROJECT_SOURCED" ]; then
+    _GIT_PROJECT_SOURCED=1
+    # Use absolute path directly without modifying SCRIPT_DIR
+    source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
+fi
 
 # Find git root directory by walking up from current directory
 find_git_root() {
@@ -63,6 +66,12 @@ is_frappe_project() {
     
     # Check for pyproject.toml with frappe
     if [ -f "$dir/pyproject.toml" ] && grep -q -i "frappe" "$dir/pyproject.toml" 2>/dev/null; then
+        return 0
+    fi
+    
+    # Check for workspace project structure (has devcontainer.example and scripts)
+    # This allows app repos that use this workspace system
+    if [ -d "$dir/devcontainer.example" ] && [ -d "$dir/scripts" ]; then
         return 0
     fi
     

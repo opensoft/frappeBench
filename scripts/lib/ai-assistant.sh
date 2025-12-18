@@ -5,9 +5,9 @@
 # Source utility libraries (guard against re-sourcing)
 if [ -z "$_AI_ASSISTANT_SOURCED" ]; then
     _AI_ASSISTANT_SOURCED=1
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    source "${SCRIPT_DIR}/common.sh"
-    source "${SCRIPT_DIR}/ai-provider.sh"
+    # Use absolute path directly without modifying SCRIPT_DIR
+    source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
+    source "$(dirname "${BASH_SOURCE[0]}")/ai-provider.sh"
 fi
 
 # Check if AI is available
