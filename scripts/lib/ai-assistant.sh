@@ -2,10 +2,13 @@
 # AI-powered assistant for workspace operations with graceful degradation
 # Version: 1.0.0
 
-# Source utility libraries
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/common.sh"
-source "${SCRIPT_DIR}/ai-provider.sh"
+# Source utility libraries (guard against re-sourcing)
+if [ -z "$_AI_ASSISTANT_SOURCED" ]; then
+    _AI_ASSISTANT_SOURCED=1
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    source "${SCRIPT_DIR}/common.sh"
+    source "${SCRIPT_DIR}/ai-provider.sh"
+fi
 
 # Check if AI is available
 ai_available() {
