@@ -1,0 +1,75 @@
+# Layer 2: Frappe Bench Image
+# Extends Layer 1a (devbench-base) with Frappe-specific tools
+# Includes: Database clients, Nginx, Redis tools, Python debuggers
+# For polyglot stack: Python, Node, MariaDB, Redis, Nginx
+
+ARG BASE_IMAGE=devbench-base:brett
+FROM ${BASE_IMAGE}
+
+# Container version labels
+LABEL layer="2"
+LABEL layer.name="frappe-bench"
+LABEL layer.version="2.0.0"
+LABEL layer.description="Frappe development and diagnostic tools"
+LABEL bench.type="frappe"
+
+# Switch to root for Frappe-specific package installation
+USER root
+
+# ========================================
+# FRAPPE-SPECIFIC PACKAGES
+# ========================================
+
+# Install Frappe stack dependencies and diagnostic tools
+RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
+    && apt-get -y install --no-install-recommends \
+    # Database
+    mariadb-client \
+    libmysqlclient-dev \
+    # SSL/TLS
+    libssl-dev \
+    openssl \
+    # Web server
+    nginx \
+    # Redis
+    redis-tools \
+    # Network diagnostics (curl already in Layer 0)
+    dnsutils \
+    netcat-openbsd \
+    # Log viewing
+    multitail \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# ========================================
+# PYTHON DIAGNOSTIC TOOLS
+# ========================================
+
+# Install Python performance and debugging tools
+RUN pip3 install --break-system-packages \
+    py-spy \
+    web-pdb \
+    frappe-bench \
+    && pip3 cache purge
+
+# Note: multitail already installed above for log viewing
+# tailspin skipped due to download issues - use multitail instead
+
+# ========================================
+# USER CONFIGURATION
+# ========================================
+
+ARG USERNAME=brett
+USER $USERNAME
+WORKDIR /workspace
+
+# Add Frappe diagnostic aliases to zshrc
+RUN echo '' >> ~/.zshrc && \
+    echo '# Frappe diagnostic aliases' >> ~/.zshrc && \
+    echo 'alias nginx-debug="nginx -t && tail -n 50 /var/log/nginx/error.log"' >> ~/.zshrc && \
+    echo 'alias frappe-doctor="bench doctor"' >> ~/.zshrc && \
+    echo 'alias redis-monitor="redis-cli monitor"' >> ~/.zshrc && \
+    echo 'alias check-workers="ps aux | grep -E \"(gunicorn|node|redis|bench)\""' >> ~/.zshrc
+
+# Default command
+CMD ["sleep", "infinity"]
