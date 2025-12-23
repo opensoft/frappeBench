@@ -1,0 +1,121 @@
+{
+  "name": "${containerEnv:PROJECT_NAME:Frappe Development}",
+  "_devcontainer_version": "1.0.0",
+  "_template_version": "frappe-devcontainer-1.0.0",
+  "dockerComposeFile": ["docker-compose.yml", "docker-compose.override.yml"],
+  "service": "frappe",
+  "workspaceFolder": "/workspace",
+  "initializeCommand": "rm -rf /tmp/vscode-extensions-* || true",
+
+  "forwardPorts": [8081, 9000, 1455],
+
+  "portsAttributes": {
+    "8081": {
+      "label": "Frappe Web Server",
+      "onAutoForward": "notify"
+    },
+    "9000": {
+      "label": "SocketIO Server",
+      "onAutoForward": "silent"
+    },
+    "1455": {
+      "label": "Codex auth callback",
+      "onAutoForward": "notify"
+    }
+  },
+  "runServices": [
+    "mariadb",
+    "redis-cache",
+    "redis-queue",
+    "redis-socketio",
+    "worker-default",
+    "worker-short",
+    "worker-long",
+    "scheduler",
+    "socketio",
+    "nginx"
+  ],
+  "shutdownAction": "stopCompose",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-python.black-formatter",
+        "ms-python.isort",
+        "redhat.vscode-yaml",
+        "esbenp.prettier-vscode",
+        "dbaeumer.vscode-eslint",
+        "continue.continue",
+        "ms-azuretools.vscode-docker",
+        "bradlc.vscode-tailwindcss",
+        "esbenp.prettier-vscode",
+        "eamodio.gitlens",
+        "k--kato.docomment",
+        "anthropic.claude-code",
+        "openai.chatgpt",
+        "GitHub.copilot",
+        "GitHub.copilot-chat",
+        "Google.geminicodeassist",
+        "google.gemini-cli-vscode-ide-companion",
+        "vadbeg.vsclaude",
+        "d3j.gemini-cli-on-vscode"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/workspace/development/frappe-bench/env/bin/python",
+        "python.linting.enabled": true,
+        "python.linting.pylintEnabled": false,
+        "python.linting.flake8Enabled": true,
+        "python.formatting.provider": "black",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+          "source.organizeImports": true
+        },
+        "terminal.integrated.profiles.linux": {
+          "zsh": {
+            "path": "/bin/zsh",
+            "args": ["-l"]
+          },
+          "Codex": {
+            "path": "/bin/zsh",
+            "args": ["-c", "codex cmd; exec zsh"]
+          },
+          "Claude Code": {
+            "path": "/bin/zsh",
+            "args": ["-c", "claude cmd; exec zsh"]
+          }
+        },
+        "terminal.integrated.defaultProfile.linux": "zsh"
+      }
+    }
+  },
+
+  "mounts": [
+    // Make local Claude CLI config available inside the container
+    "source=${localEnv:HOME}/.claude,target=/root/.claude,type=bind,consistency=cached",
+    "source=${localEnv:HOME}/.codex,target=/root/.codex,type=bind,consistency=cached",
+    "source=${localEnv:HOME}/.claude,target=${localEnv:HOME}/.claude,type=bind",
+    "source=${localEnv:HOME}/.codex,target=${localEnv:HOME}/.codex,type=bind"
+  ],
+
+  "remoteUser": "${localEnv:USER}",
+
+  "containerEnv": {
+    "SHELL": "/bin/zsh",
+    "TERM_PROGRAM": "${localEnv:TERM_PROGRAM}",
+    "WARP_HONOR_PS1": "1",
+    "WARP_USE_SSH_WRAPPER": "${localEnv:WARP_USE_SSH_WRAPPER}",
+    "WARP_IS_LOCAL_SHELL_SESSION": "${localEnv:WARP_IS_LOCAL_SHELL_SESSION}",
+    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "64000"
+  },
+
+  "postCreateCommand": {
+    "env": "cp -n .devcontainer/.env.example .devcontainer/.env || true",
+    "cleanup": "rm -rf /home/${localEnv:USER}/.vscode-server/extensions/.* 2>/dev/null || true",
+    "fix-claude-logo": "mkdir -p /home/${localEnv:USER}/.vscode-server/extensions/anthropic.claude-code-*/resources/ 2>/dev/null && cp .devcontainer/assets/claude-logo.svg /home/${localEnv:USER}/.vscode-server/extensions/anthropic.claude-code-*/resources/ 2>/dev/null || true",
+    "setup": "bash scripts/setup-frappe.sh",
+    "stack": "bash scripts/setup_stack.sh"
+  },
+  "postAttachCommand": "echo 'Connected to Frappe development environment'"
+}
