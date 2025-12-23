@@ -189,13 +189,7 @@ services:
           cpus: "${CONTAINER_CPUS:-1}"
 
   worker-short:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        USER_NAME: ${USER}
-        USER_UID: ${UID:-1000}
-        USER_GID: ${GID:-1000}
+    image: frappe-bench:${USER:-brett}
     container_name: ${PROJECT_NAME:-frappe}-worker-short
     user: "${UID:-1000}:${GID:-1000}"
     command: bench worker --queue short
@@ -223,13 +217,7 @@ services:
           cpus: "${CONTAINER_CPUS:-1}"
 
   worker-long:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        USER_NAME: ${USER}
-        USER_UID: ${UID:-1000}
-        USER_GID: ${GID:-1000}
+    image: frappe-bench:${USER:-brett}
     container_name: ${PROJECT_NAME:-frappe}-worker-long
     user: "${UID:-1000}:${GID:-1000}"
     command: bench worker --queue long
@@ -257,13 +245,7 @@ services:
           cpus: "${CONTAINER_CPUS:-1}"
 
   scheduler:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        USER_NAME: ${USER}
-        USER_UID: ${UID:-1000}
-        USER_GID: ${GID:-1000}
+    image: frappe-bench:${USER:-brett}
     container_name: ${PROJECT_NAME:-frappe}-scheduler
     user: "${UID:-1000}:${GID:-1000}"
     command: bench schedule
@@ -291,13 +273,7 @@ services:
           cpus: "${CONTAINER_CPUS:-1}"
 
   socketio:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        USER_NAME: ${USER}
-        USER_UID: ${UID:-1000}
-        USER_GID: ${GID:-1000}
+    image: frappe-bench:${USER:-brett}
     container_name: ${PROJECT_NAME:-frappe}-socketio
     user: "${UID:-1000}:${GID:-1000}"
     command: node development/frappe-bench/apps/frappe/socketio.js
