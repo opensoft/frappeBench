@@ -102,7 +102,7 @@ echo ""
 validate_workspace_operation "new" "$WORKSPACE_NAME" "$PROJECT_TYPE"
 
 # Step 1: Create new workspace subdirectory
-log_subsection "[1/4] Creating new workspace directory..."
+log_subsection "[1/3] Creating new workspace directory..."
 if [ -d "$NEW_DIR" ]; then
     log_error "Directory ${NEW_DIR} already exists!"
     exit 1
@@ -114,7 +114,7 @@ log_success "Workspace directory created"
 echo ""
 
 # Step 2: Copy devcontainer template
-log_subsection "[2/4] Setting up devcontainer configuration..."
+log_subsection "[2/3] Setting up devcontainer configuration..."
 if [ ! -d "${GIT_ROOT}/devcontainer.example" ]; then
     log_error "devcontainer.example folder not found!"
     exit 1
@@ -144,8 +144,16 @@ else
     HOST_PORT=$((BASE_PORT + NATO_INDEX))
 fi
 
+# Detect project name from git repo name
+REPO_NAME=$(basename "$GIT_ROOT")
+PROJECT_NAME="${REPO_NAME}"
+
 # Update .devcontainer/.env with workspace-specific settings
 cat > "${NEW_DIR}/.devcontainer/.env" << EOF
+# Project Configuration
+PROJECT_NAME=${PROJECT_NAME}
+COMPOSE_PROJECT_NAME=${PROJECT_NAME}-${WORKSPACE_NAME}
+
 # Workspace: ${WORKSPACE_NAME}
 CODENAME=${WORKSPACE_NAME}
 HOST_PORT=${HOST_PORT}
@@ -174,19 +182,19 @@ APP_BRANCH=main
 
 # Bench configuration
 FRAPPE_BENCH_PATH=/workspace/bench
+
+# Resource Limits
+CONTAINER_MEMORY=4g
+CONTAINER_CPUS=2
 EOF
 log_success "Devcontainer environment configured"
+log_info "  Project: ${PROJECT_NAME}"
+log_info "  Workspace: ${WORKSPACE_NAME}"
 log_info "  Port: ${HOST_PORT}"
 echo ""
 
-# Step 3: Update devcontainer.json name
-log_subsection "[3/4] Customizing devcontainer settings..."
-sed -i "s/WORKSPACE_NAME/${WORKSPACE_NAME}/g" "${NEW_DIR}/.devcontainer/devcontainer.json"
-log_success "Devcontainer name updated"
-echo ""
-
-# Step 4: Clone app repository (if configured)
-log_subsection "[4/4] Setting up app repository..."
+# Step 3: Clone app repository (if configured)
+log_subsection "[3/3] Setting up app repository..."
 if [ -n "$APP_REPO" ]; then
     log_info "  Cloning from provided APP_REPO..."
     if git clone "$APP_REPO" "${NEW_DIR}/bench/apps/app"; then
