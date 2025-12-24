@@ -141,7 +141,6 @@ services:
     command: bench worker --queue default
     volumes:
       - ../:/workspace:cached
-      - ~/.gitconfig:/home/${USER:-frappe}/.gitconfig:ro
     networks:
       - frappe-network
     depends_on:
@@ -175,7 +174,6 @@ services:
     command: bench worker --queue short
     volumes:
       - ../:/workspace:cached
-      - ~/.gitconfig:/home/${USER:-frappe}/.gitconfig:ro
     networks:
       - frappe-network
     depends_on:
@@ -209,7 +207,6 @@ services:
     command: bench worker --queue long
     volumes:
       - ../:/workspace:cached
-      - ~/.gitconfig:/home/${USER:-frappe}/.gitconfig:ro
     networks:
       - frappe-network
     depends_on:
@@ -243,7 +240,6 @@ services:
     command: bench schedule
     volumes:
       - ../:/workspace:cached
-      - ~/.gitconfig:/home/${USER:-frappe}/.gitconfig:ro
     networks:
       - frappe-network
     depends_on:
@@ -277,7 +273,6 @@ services:
     command: node development/frappe-bench/apps/frappe/socketio.js
     volumes:
       - ../:/workspace:cached
-      - ~/.gitconfig:/home/${USER:-frappe}/.gitconfig:ro
     networks:
       - frappe-network
     depends_on:

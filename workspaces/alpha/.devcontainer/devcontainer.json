@@ -111,7 +111,7 @@
   },
 
   "postCreateCommand": {
-    "env": "cp -n .devcontainer/.env.example .devcontainer/.env || true",
+    "env": "cp --update=none .devcontainer/.env.example .devcontainer/.env || true",
     "cleanup": "rm -rf /home/${localEnv:USER}/.vscode-server/extensions/.* 2>/dev/null || true",
     "fix-claude-logo": "bash -c 'for dir in /home/${localEnv:USER}/.vscode-server/extensions/anthropic.claude-code-*/resources/; do [ -d \"$dir\" ] && cp .devcontainer/assets/claude-logo.svg \"$dir\" 2>/dev/null; done' || true",
     "setup": "bash scripts/setup-frappe.sh",

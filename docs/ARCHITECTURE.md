@@ -146,7 +146,7 @@ All services start in parallel:
 **File**: [devcontainer.json:117-121](devcontainer.json#L117-L121)
 ```json
 "postCreateCommand": {
-  "env": "cp -n .devcontainer/.env.example .devcontainer/.env || true",
+  "env": "cp --update=none .devcontainer/.env.example .devcontainer/.env || true",
   "setup": "bash .devcontainer/setup-frappe.sh"
 }
 ```

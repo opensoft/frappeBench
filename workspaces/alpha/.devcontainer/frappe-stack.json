@@ -1,0 +1,28 @@
+{
+  "apps": [
+    {
+      "name": "dartwing",
+      "repo": "https://github.com/opensoft/frappe-app-dartwing",
+      "branch": "main"
+    },
+    {
+      "name": "erpnext",
+      "repo": "https://github.com/frappe/erpnext",
+      "branch": "develop"
+    },
+    {
+      "name": "payments",
+      "repo": "https://github.com/frappe/payments",
+      "branch": "develop"
+    }
+  ],
+  "sites": [
+    {
+      "name": "dartwing.localhost",
+      "admin_password": "admin",
+      "apps": [
+        "dartwing"
+      ]
+    }
+  ]
+}

@@ -9,10 +9,21 @@
 # Exit immediately if a command exits with a non-zero status.
 set -e
 
+echo "Setting up Frappe stack..."
+
+# --- Load Environment Variables ---
+if [ -f "/workspace/.devcontainer/.env" ]; then
+    export FRAPPE_BENCH_PATH=$(grep "^FRAPPE_BENCH_PATH=" /workspace/.devcontainer/.env | cut -d'=' -f2)
+    export SITE_NAME=$(grep "^SITE_NAME=" /workspace/.devcontainer/.env | cut -d'=' -f2)
+fi
+
 # --- Configuration ---
-BENCH_DIR="/workspace/development/frappe-bench"
+FRAPPE_BENCH_PATH="${FRAPPE_BENCH_PATH:-/workspace/bench}"
 STACK_FILE="/workspace/.devcontainer/frappe-stack.json"
 DB_ROOT_PASSWORD="frappe" # As determined from docker-compose files.
+
+# Disable Claude Code for bench commands to avoid recursion
+export CLAUDE_CODE_DISABLED=1
 
 # --- Pre-flight Checks ---
 
@@ -20,28 +31,26 @@ DB_ROOT_PASSWORD="frappe" # As determined from docker-compose files.
 if ! command -v jq &> /dev/null; then
     echo "Error: jq is not installed. Please install it to proceed."
     echo "On Debian/Ubuntu: sudo apt-get install jq"
-    echo "On macOS: brew install jq"
     exit 1
 fi
 
 # 2. Check for stack file
 if [ ! -f "$STACK_FILE" ]; then
-    echo "Error: $STACK_FILE not found in the project root."
-    exit 1
+    echo "Warning: $STACK_FILE not found. Skipping stack setup."
+    exit 0
 fi
 
 # 3. Check for bench directory
-if [ ! -d "$BENCH_DIR" ]; then
-    echo "Warning: Bench directory not found at $BENCH_DIR."
-    echo "This likely means setup-frappe.sh did not complete successfully."
-    echo "Skipping stack setup - run 'bash scripts/setup-frappe.sh' first, then re-run this script."
-    exit 0  # Exit gracefully so container creation continues
+if [ ! -d "$FRAPPE_BENCH_PATH" ]; then
+    echo "Error: Bench directory not found at $FRAPPE_BENCH_PATH."
+    echo "Please run setup-frappe.sh first to initialize the bench."
+    exit 1
 fi
 
 # --- Main Execution ---
 
-echo "Changing directory to the Frappe bench: $BENCH_DIR"
-cd "$BENCH_DIR"
+echo "Changing directory to the Frappe bench: $FRAPPE_BENCH_PATH"
+cd "$FRAPPE_BENCH_PATH"
 
 # --- App Installation ---
 
@@ -55,7 +64,7 @@ jq -c '.apps[]' "$STACK_FILE" | while read -r app; do
     echo "--------------------------------------------------"
     echo "Getting app: $APP_NAME"
     echo "  Repo: $APP_REPO"
-    
+
     if [ -d "apps/$APP_NAME" ]; then
         echo "  App directory 'apps/$APP_NAME' already exists. Skipping 'bench get-app'."
     else
@@ -104,8 +113,13 @@ jq -c '.sites[]' "$STACK_FILE" | while read -r site; do
     echo "=================================================="
 done
 
+# --- Health Check ---
 
-echo "✅ Bench setup complete!"
-echo
+echo "Running bench health check..."
+bench doctor || echo "Bench doctor check completed with warnings (non-critical)."
+
+echo ""
+echo "✅ Frappe stack setup completed successfully!"
+echo ""
 echo "To start the development server, run:"
-echo "cd $BENCH_DIR && bench start"
+echo "  cd $FRAPPE_BENCH_PATH && bench start"

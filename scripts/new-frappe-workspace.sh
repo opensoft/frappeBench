@@ -87,16 +87,9 @@ if [ -z "$WORKSPACE_NAME" ]; then
     echo ""
 fi
 
-# Determine app repository based on project type
-case "$PROJECT_TYPE" in
-    dartwing)
-        APP_REPO="git@github.com:opensoft/frappe-app-dartwing.git"
-        ;;
-    *)
-        log_warn "Unknown project type: $PROJECT_TYPE - using auto-detection for app repo"
-        # Try to find app in workspace or skip if not needed
-        ;;
-esac
+# App repository will be auto-detected or left empty
+# Projects can define APP_REPO in their own scripts if needed
+APP_REPO=""
 
 NEW_DIR="${WORKSPACES_DIR}/${WORKSPACE_NAME}"
 
@@ -128,12 +121,7 @@ if [ ! -d "${GIT_ROOT}/devcontainer.example" ]; then
 fi
 
 cp -r "${GIT_ROOT}/devcontainer.example" "${NEW_DIR}/.devcontainer"
-# Link workspace scripts to shared versions in repo (mounted at /repo in container)
-ln -s "/repo/scripts/init-bench.sh" "${NEW_DIR}/scripts/init-bench.sh"
-ln -s "/repo/scripts/setup-workspace.sh" "${NEW_DIR}/scripts/setup-workspace.sh"
 log_success "Devcontainer template copied"
-log_success "Init bench script linked"
-log_success "Setup workspace script linked"
 
 # Calculate unique port based on NATO alphabet index for sequential assignment
 BASE_PORT=8201
@@ -160,8 +148,6 @@ fi
 cat > "${NEW_DIR}/.devcontainer/.env" << EOF
 # Workspace: ${WORKSPACE_NAME}
 CODENAME=${WORKSPACE_NAME}
-CONTAINER_NAME=dartwing-frappe-${WORKSPACE_NAME}
-COMPOSE_PROJECT_NAME=dartwing-frappe-${WORKSPACE_NAME}
 HOST_PORT=${HOST_PORT}
 
 # User configuration
@@ -173,7 +159,6 @@ GID=${GID}
 DB_HOST=frappe-mariadb
 DB_PORT=3306
 DB_PASSWORD=frappe
-DB_NAME=dartwing_${WORKSPACE_NAME}
 
 # Redis configuration (uses existing frappe redis containers)
 REDIS_CACHE=frappe-redis-cache:6379
@@ -191,7 +176,6 @@ APP_BRANCH=main
 FRAPPE_BENCH_PATH=/workspace/bench
 EOF
 log_success "Devcontainer environment configured"
-log_info "  Container: dartwing-frappe-${WORKSPACE_NAME}"
 log_info "  Port: ${HOST_PORT}"
 echo ""
 
@@ -204,19 +188,14 @@ echo ""
 # Step 4: Clone app repository (if configured)
 log_subsection "[4/4] Setting up app repository..."
 if [ -n "$APP_REPO" ]; then
-    APP_NAME="dartwing"
-    if [ ! -d "${NEW_DIR}/bench/apps/${APP_NAME}" ]; then
-        log_info "  Cloning from GitHub..."
-        if git clone "$APP_REPO" "${NEW_DIR}/bench/apps/${APP_NAME}"; then
-            log_success "${APP_NAME} app cloned"
-        else
-            log_warn "Failed to clone ${APP_NAME} app - you may need to clone manually"
-        fi
+    log_info "  Cloning from provided APP_REPO..."
+    if git clone "$APP_REPO" "${NEW_DIR}/bench/apps/app"; then
+        log_success "App repository cloned"
     else
-        log_warn "${APP_NAME} app already exists, skipping"
+        log_warn "Failed to clone app repository - you may need to clone manually"
     fi
 else
-    log_info "  No app repository configured for this project type"
+    log_info "  No app repository configured - workspace ready for manual app setup"
 fi
 echo ""
 
@@ -225,7 +204,6 @@ log_info "Workspace Details:"
 log_info "  Name: ${WORKSPACE_NAME}"
 log_info "  Location: ${NEW_DIR}"
 log_info "  Bench: ${NEW_DIR}/bench"
-log_info "  Container: dartwing-frappe-${WORKSPACE_NAME}"
 log_info "  Port: ${HOST_PORT}"
 echo ""
 log_info "Next Steps:"

@@ -1,12 +1,18 @@
 #!/bin/bash
 # AI provider detection and credential management utility
-# Version: 1.0.0
+# Version: 2.0.0 - Now supports CLI providers with subscription auth
 
 # Source common functions (guard against re-sourcing)
 if [ -z "$_AI_PROVIDER_SOURCED" ]; then
     _AI_PROVIDER_SOURCED=1
     # Use absolute path directly without modifying SCRIPT_DIR
     source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
+    
+    # Source CLI adapter from shared location (devBenches/scripts/)
+    CLI_ADAPTER_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../" && pwd)/scripts/ai-cli-adapter.sh"
+    if [ -f "$CLI_ADAPTER_PATH" ]; then
+        source "$CLI_ADAPTER_PATH"
+    fi
 fi
 
 # List of credential locations to check for each provider
@@ -132,6 +138,39 @@ get_primary_provider() {
     echo "$provider"
 }
 
+# Get primary provider with CLI support (prioritizes CLIs over API keys)
+# Returns: provider_name|provider_type (e.g., "codex|cli" or "openai|api_key")
+get_primary_provider_with_cli() {
+    # First: Try CLI providers if adapter is available
+    if command -v select_ai_provider >/dev/null 2>&1; then
+        local cli_result
+        cli_result=$(select_ai_provider 2>/dev/null)
+        
+        # Parse result: provider|type
+        local cli_provider=$(echo "$cli_result" | cut -d'|' -f1)
+        local cli_type=$(echo "$cli_result" | cut -d'|' -f2)
+        
+        # If CLI available, return it
+        if [ "$cli_provider" != "none" ] && [ "$cli_type" = "cli" ]; then
+            echo "${cli_provider}|cli"
+            return 0
+        fi
+    fi
+    
+    # Second: Fall back to API key detection
+    local api_provider
+    api_provider=$(get_primary_provider 2>/dev/null)
+    
+    if [ -n "$api_provider" ]; then
+        echo "${api_provider}|api_key"
+        return 0
+    fi
+    
+    # Nothing available
+    echo "none|none"
+    return 1
+}
+
 # Get API key for provider
 get_provider_api_key() {
     local provider="$1"
@@ -243,14 +282,33 @@ show_available_providers() {
 
 # Initialize AI provider support
 init_ai_provider() {
-    local provider
-    provider=$(get_primary_provider) || {
+    # If AI_PROVIDER already set by parent wrapper, use it
+    if [ -n "$AI_PROVIDER" ] && [ "$AI_PROVIDER" != "" ]; then
+        log_success "Using AI provider from parent: $AI_PROVIDER (via ${AI_PROVIDER_TYPE:-detected})"
+        return 0
+    fi
+    
+    local provider_result
+    provider_result=$(get_primary_provider_with_cli) || {
         log_warn "No AI providers available - operating in degraded mode"
         export AI_PROVIDER=""
+        export AI_PROVIDER_TYPE=""
         return 0
     }
     
+    # Parse result: provider|type
+    local provider=$(echo "$provider_result" | cut -d'|' -f1)
+    local provider_type=$(echo "$provider_result" | cut -d'|' -f2)
+    
+    if [ "$provider" = "none" ]; then
+        log_warn "No AI providers available - operating in degraded mode"
+        export AI_PROVIDER=""
+        export AI_PROVIDER_TYPE=""
+        return 0
+    fi
+    
     export AI_PROVIDER="$provider"
-    log_success "Using $provider as AI provider"
+    export AI_PROVIDER_TYPE="$provider_type"
+    log_success "Using $provider as AI provider (via $provider_type)"
     return 0
 }

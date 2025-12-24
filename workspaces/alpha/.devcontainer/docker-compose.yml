@@ -55,6 +55,9 @@ services:
       
       # GitHub Copilot CLI
       - ~/.copilot-cli:/home/${USER:-vscode}/.copilot-cli:ro
+      
+      # Wave Terminal
+      - ~/.waveterm:/home/${USER:-vscode}/.waveterm:cached
 
     ports:
       - "8012:8000"  # Host port 8012 → Container port 8000 (bench serve)

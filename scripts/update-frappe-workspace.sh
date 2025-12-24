@@ -71,8 +71,37 @@ update_single_workspace() {
     done
     log_success "Devcontainer files updated"
     
+    # Step 2.5: Ensure all script symlinks are present
+    log_subsection "[2/3] Updating workspace script symlinks..."
+    
+    # Ensure scripts directory exists
+    mkdir -p "${workspace_dir}/scripts"
+    
+    # Required script symlinks
+    declare -a required_scripts=(
+        "init-bench.sh"
+        "setup-workspace.sh"
+        "bench-watchdog.sh"
+        "daemonize.sh"
+    )
+    
+    for script in "${required_scripts[@]}"; do
+        symlink_path="${workspace_dir}/scripts/${script}"
+        target_path="/repo/scripts/${script}"
+        
+        # Remove old symlink or file if exists
+        if [ -e "$symlink_path" ] || [ -L "$symlink_path" ]; then
+            rm -f "$symlink_path"
+        fi
+        
+        # Create new symlink
+        ln -s "$target_path" "$symlink_path"
+    done
+    
+    log_success "Script symlinks updated"
+    
     # Step 3: Preserve and reapply .env settings
-    log_subsection "[2/3] Preserving workspace environment configuration..."
+    log_subsection "[3/4] Preserving workspace environment configuration..."
     
     if [ -f "${workspace_dir}/.devcontainer/.env.backup" ]; then
         # Extract workspace name from existing .env to validate it
@@ -127,7 +156,7 @@ EOF
     fi
     
     # Step 4: Update devcontainer.json name with workspace name
-    log_subsection "[3/3] Customizing devcontainer settings..."
+    log_subsection "[4/4] Customizing devcontainer settings..."
     if [ -f "${workspace_dir}/.devcontainer/devcontainer.json" ]; then
         sed -i "s/WORKSPACE_NAME/${workspace_name}/g" "${workspace_dir}/.devcontainer/devcontainer.json"
         log_success "Devcontainer name updated"

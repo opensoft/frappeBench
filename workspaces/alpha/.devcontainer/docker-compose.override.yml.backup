@@ -20,6 +20,8 @@ services:
       # Required for: VS Code Claude Code extension, Claude CLI tools
       # Location: ~/.claude/ contains API keys and session data
       - ~/.claude:/home/${USER:-vscode}/.claude:cached
+      # Claude Code IDE configuration file
+      - ~/.claude.json:/home/${USER:-vscode}/.claude.json:cached
 
       # Google Gemini CLI Authentication
       # Required for: VS Code Gemini extension, Gemini CLI tools
@@ -68,20 +70,20 @@ services:
 
   worker-default:
     volumes:
-      - ~/.gitconfig:/home/${USER:-frappe}/.gitconfig:cached
+      - ~/.gitconfig:/home/${USER:-frappe}/.gitconfig:ro
 
   worker-short:
     volumes:
-      - ~/.gitconfig:/home/${USER:-frappe}/.gitconfig:cached
+      - ~/.gitconfig:/home/${USER:-frappe}/.gitconfig:ro
 
   worker-long:
     volumes:
-      - ~/.gitconfig:/home/${USER:-frappe}/.gitconfig:cached
+      - ~/.gitconfig:/home/${USER:-frappe}/.gitconfig:ro
 
   scheduler:
     volumes:
-      - ~/.gitconfig:/home/${USER:-frappe}/.gitconfig:cached
+      - ~/.gitconfig:/home/${USER:-frappe}/.gitconfig:ro
 
   socketio:
     volumes:
-      - ~/.gitconfig:/home/${USER:-frappe}/.gitconfig:cached
+      - ~/.gitconfig:/home/${USER:-frappe}/.gitconfig:ro

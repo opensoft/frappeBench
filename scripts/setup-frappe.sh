@@ -17,6 +17,7 @@ FRAPPE_SITE_NAME=${FRAPPE_SITE_NAME:-site1.localhost}
 DB_NAME=${DB_NAME:-site1}
 ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
 DB_HOST=${DB_HOST:-mariadb}
+DB_PORT=${DB_PORT:-3306}
 DB_PASSWORD=${DB_PASSWORD:-frappe}
 BENCH_DIR=${BENCH_DIR:-/workspace/development/frappe-bench}
 FRAPPE_BRANCH=${FRAPPE_BRANCH:-version-15}
