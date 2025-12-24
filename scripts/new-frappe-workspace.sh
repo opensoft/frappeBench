@@ -152,11 +152,14 @@ PROJECT_NAME="${REPO_NAME}"
 USER_UID=$(id -u)
 USER_GID=$(id -g)
 
+# Docker Compose requires lowercase project names
+COMPOSE_NAME=$(echo "${PROJECT_NAME}-${WORKSPACE_NAME}" | tr '[:upper:]' '[:lower:]')
+
 # Update .devcontainer/.env with workspace-specific settings
 cat > "${NEW_DIR}/.devcontainer/.env" << EOF
 # Project Configuration
 PROJECT_NAME=${PROJECT_NAME}
-COMPOSE_PROJECT_NAME=${PROJECT_NAME}-${WORKSPACE_NAME}
+COMPOSE_PROJECT_NAME=${COMPOSE_NAME}
 
 # Workspace: ${WORKSPACE_NAME}
 CODENAME=${WORKSPACE_NAME}
