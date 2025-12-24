@@ -148,6 +148,10 @@ fi
 REPO_NAME=$(basename "$GIT_ROOT")
 PROJECT_NAME="${REPO_NAME}"
 
+# Get user IDs (GID may not be exported in shell)
+USER_UID=$(id -u)
+USER_GID=$(id -g)
+
 # Update .devcontainer/.env with workspace-specific settings
 cat > "${NEW_DIR}/.devcontainer/.env" << EOF
 # Project Configuration
@@ -160,8 +164,8 @@ HOST_PORT=${HOST_PORT}
 
 # User configuration
 USER=${USER}
-UID=${UID}
-GID=${GID}
+UID=${USER_UID}
+GID=${USER_GID}
 
 # Database configuration (uses existing frappe-mariadb container)
 DB_HOST=frappe-mariadb
