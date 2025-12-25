@@ -95,7 +95,29 @@ bench clear-cache
 
 ## Architecture
 
+### Container Image Layers
+
+frappeBench uses the workBenches multi-layer architecture:
+
+**Layer 0** (`workbench-base:brett`) - System base from [workBenches](../../CONTAINER-ARCHITECTURE.md#layer-0-system-base-workbench-base)
+- Ubuntu 24.04, git, editors (vim, neovim), modern CLI tools (zoxide, fzf, bat)
+
+**Layer 1a** (`devbench-base:brett`) - Development tools from [workBenches](../../CONTAINER-ARCHITECTURE.md#layer-1a-development-base-devbench-base)
+- Python 3, Node.js LTS, AI CLIs (Claude, Copilot, Gemini, OpenCode, Letta)
+- Python dev tools (black, flake8, pytest, ipython)
+
+**Layer 2** (`frappe-bench:brett`) - Frappe-specific tools (this bench)
+- MariaDB client, Nginx, Redis tools
+- Python profiling (py-spy, web-pdb)
+- Network diagnostics (dig, nc)
+- Log viewing (multitail)
+- Frappe diagnostic aliases
+
+### Service Architecture
+
 The devcontainer mounts the project at `/workspace` and creates a Frappe bench at `/workspace/development/frappe-bench`. All services communicate over the `frappe-network` Docker network.
+
+For detailed Layer 2 tools and rationale, see [Architecture Documentation](docs/ARCHITECTURE.md).
 
 ## Notes
 
