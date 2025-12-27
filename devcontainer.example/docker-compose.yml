@@ -63,7 +63,7 @@ services:
       - ~/.waveterm:/home/${USER:-vscode}/.waveterm:cached
 
     ports:
-      - "${HOST_PORT:-8012}:8000"  # Host port → Container port (bench serve)
+      - "${HOST_PORT:-8001}:8000"  # Host port → Container port (bench serve)
 
     command: sleep infinity
     networks:

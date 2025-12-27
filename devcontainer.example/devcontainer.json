@@ -59,7 +59,7 @@
         "d3j.gemini-cli-on-vscode"
       ],
       "settings": {
-        "python.defaultInterpreterPath": "/workspace/development/frappe-bench/env/bin/python",
+        "python.defaultInterpreterPath": "/workspace/bench/env/bin/python",
         "python.linting.enabled": true,
         "python.linting.pylintEnabled": false,
         "python.linting.flake8Enabled": true,
