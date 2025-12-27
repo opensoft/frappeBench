@@ -13,6 +13,15 @@ if [ -f .devcontainer/.env ]; then
     set +a
 fi
 
+# Apply pip constraints to resolve frappe/erpnext dependency conflicts
+# (python-dateutil version mismatch between frappe and holidays)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$SCRIPT_DIR/constraints.txt" ]; then
+    export PIP_CONSTRAINT="$SCRIPT_DIR/constraints.txt"
+elif [ -f "/repo/scripts/constraints.txt" ]; then
+    export PIP_CONSTRAINT="/repo/scripts/constraints.txt"
+fi
+
 FRAPPE_SITE_NAME=${FRAPPE_SITE_NAME:-${SITE_NAME:-site1.localhost}}
 DB_NAME=${DB_NAME:-site1}
 ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}

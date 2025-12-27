@@ -20,6 +20,15 @@ if [ -f /workspace/.devcontainer/.env ]; then
     set +a
 fi
 
+# Apply pip constraints to resolve frappe/erpnext dependency conflicts
+# (python-dateutil version mismatch between frappe and holidays)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$SCRIPT_DIR/constraints.txt" ]; then
+    export PIP_CONSTRAINT="$SCRIPT_DIR/constraints.txt"
+elif [ -f "/repo/scripts/constraints.txt" ]; then
+    export PIP_CONSTRAINT="/repo/scripts/constraints.txt"
+fi
+
 BENCH_DIR=${BENCH_DIR:-${FRAPPE_BENCH_PATH:-/workspace/development/frappe-bench}}
 DB_HOST=${DB_HOST:-frappe-mariadb}
 DB_PORT=${DB_PORT:-3306}
@@ -310,6 +319,10 @@ ensure_app_in_apps_txt() {
     # Add app to apps.txt if not already present
     if ! grep -Fxq "$app_name" "$apps_txt"; then
         echo "  Registering $app_name in apps.txt"
+        # Ensure file ends with newline before appending
+        if [ -s "$apps_txt" ] && [ -n "$(tail -c1 "$apps_txt")" ]; then
+            echo "" >> "$apps_txt"
+        fi
         echo "$app_name" >> "$apps_txt"
     fi
 }
