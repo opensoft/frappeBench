@@ -21,6 +21,9 @@ services:
       # Shared repo (for scripts symlinks)
       - ../../..:/repo:cached
 
+      # Shared app cache (read/write)
+      - ~/frappe-app-cache:/opt/frappe-app-cache:rw
+
       # Mount Docker socket to enable docker commands inside container
       - /var/run/docker.sock:/var/run/docker.sock:rw
 
@@ -78,6 +81,7 @@ services:
       - REDIS_SOCKETIO=${REDIS_SOCKETIO:-frappe-redis-socketio:6379}
       - DISABLE_AUTO_SSH_AGENT=1
       - BENCH_DISABLE_UV=${BENCH_DISABLE_UV:-0}
+      - APP_CACHE_DIR=${APP_CACHE_DIR:-/opt/frappe-app-cache}
 
     # Resource limits
     deploy:

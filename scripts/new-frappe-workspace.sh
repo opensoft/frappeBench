@@ -210,6 +210,7 @@ APP_BRANCH=main
 # Bench configuration
 FRAPPE_BENCH_PATH=/workspace/bench
 BENCH_DISABLE_UV=0
+APP_CACHE_DIR=/opt/frappe-app-cache
 
 # Resource Limits
 CONTAINER_MEMORY=4g

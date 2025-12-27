@@ -25,6 +25,7 @@ DB_HOST=${DB_HOST:-frappe-mariadb}
 DB_PORT=${DB_PORT:-3306}
 DB_ROOT_USER=${DB_ROOT_USER:-root}
 DB_ROOT_PASSWORD=${DB_ROOT_PASSWORD:-${DB_PASSWORD:-frappe}}
+APP_CACHE_DIR=${APP_CACHE_DIR:-/opt/frappe-app-cache}
 
 # --- Pre-flight Checks ---
 
@@ -116,6 +117,20 @@ ensure_site_db_access() {
 
     echo "  Warning: DB credentials still failing for $db_name."
     return 1
+}
+
+ensure_apps_txt_entry() {
+    local app_name="$1"
+    local apps_file="sites/apps.txt"
+
+    mkdir -p "sites"
+    if [ ! -f "$apps_file" ]; then
+        echo "frappe" > "$apps_file"
+    fi
+
+    if ! grep -Fxq "$app_name" "$apps_file"; then
+        echo "$app_name" >> "$apps_file"
+    fi
 }
 
 get_site_db_name() {
@@ -211,6 +226,35 @@ clone_app_repo() {
     else
         git clone --depth 1 --origin upstream "$repo" "$target"
     fi
+}
+
+ensure_cached_app() {
+    local repo="$1"
+    local app_name="$2"
+    local branch="$3"
+
+    if [ -z "${APP_CACHE_DIR:-}" ]; then
+        return 1
+    fi
+
+    mkdir -p "$APP_CACHE_DIR"
+    local cache_dir="${APP_CACHE_DIR}/${app_name}"
+
+    if [ ! -d "$cache_dir/.git" ]; then
+        if [ -n "$branch" ]; then
+            git clone --depth 1 --branch "$branch" --origin upstream "$repo" "$cache_dir"
+        else
+            git clone --depth 1 --origin upstream "$repo" "$cache_dir"
+        fi
+    fi
+
+    if [ -e "apps/$app_name" ] && [ ! -L "apps/$app_name" ]; then
+        echo "  App directory exists; skipping cache link."
+        return 0
+    fi
+
+    ln -sfn "$cache_dir" "apps/$app_name"
+    return 0
 }
 
 ensure_dartwing_uv_deps() {
@@ -336,6 +380,9 @@ jq -c '.apps[]' "$STACK_FILE" | while read -r app; do
     echo "Getting app: $APP_NAME"
     echo "  Repo: $APP_REPO"
     
+    ensure_apps_txt_entry "$APP_NAME"
+    ensure_cached_app "$APP_REPO" "$APP_NAME" "$APP_BRANCH" || true
+
     if [ -d "apps/$APP_NAME" ]; then
         echo "  App directory 'apps/$APP_NAME' already exists. Skipping 'bench get-app'."
         if [ "$APP_NAME" = "dartwing" ]; then
