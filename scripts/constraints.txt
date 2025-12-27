@@ -1,8 +1,0 @@
-# Dependency constraints for Frappe/ERPNext compatibility
-# See: https://pip.pypa.io/en/stable/user_guide/#constraints-files
-#
-# Problem: frappe requires python-dateutil~=2.8.2
-#          holidays (erpnext dep) requires python-dateutil>=2.9.0.post0
-# Solution: Force 2.9.0.post0 (newer version) and accept the frappe warning
-
-python-dateutil==2.9.0.post0

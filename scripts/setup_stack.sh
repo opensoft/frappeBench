@@ -20,15 +20,6 @@ if [ -f /workspace/.devcontainer/.env ]; then
     set +a
 fi
 
-# Apply pip constraints to resolve frappe/erpnext dependency conflicts
-# (python-dateutil version mismatch between frappe and holidays)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [ -f "$SCRIPT_DIR/constraints.txt" ]; then
-    export PIP_CONSTRAINT="$SCRIPT_DIR/constraints.txt"
-elif [ -f "/repo/scripts/constraints.txt" ]; then
-    export PIP_CONSTRAINT="/repo/scripts/constraints.txt"
-fi
-
 BENCH_DIR=${BENCH_DIR:-${FRAPPE_BENCH_PATH:-/workspace/development/frappe-bench}}
 DB_HOST=${DB_HOST:-frappe-mariadb}
 DB_PORT=${DB_PORT:-3306}

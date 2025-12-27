@@ -13,15 +13,6 @@ if [ -f .devcontainer/.env ]; then
     set +a
 fi
 
-# Apply pip constraints to resolve frappe/erpnext dependency conflicts
-# (python-dateutil version mismatch between frappe and holidays)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [ -f "$SCRIPT_DIR/constraints.txt" ]; then
-    export PIP_CONSTRAINT="$SCRIPT_DIR/constraints.txt"
-elif [ -f "/repo/scripts/constraints.txt" ]; then
-    export PIP_CONSTRAINT="/repo/scripts/constraints.txt"
-fi
-
 FRAPPE_SITE_NAME=${FRAPPE_SITE_NAME:-${SITE_NAME:-site1.localhost}}
 DB_NAME=${DB_NAME:-site1}
 ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
@@ -43,6 +34,24 @@ NC='\033[0m'
 log() {
     local color=$1; shift
     echo -e "${color}$*${NC}"
+}
+
+# Patch frappe's python-dateutil requirement to resolve conflict with holidays
+# frappe requires ~=2.8.2, holidays requires >=2.9.0.post0
+patch_frappe_dateutil_requirement() {
+    local pyproject="$BENCH_DIR/apps/frappe/pyproject.toml"
+    if [ ! -f "$pyproject" ]; then
+        return 0
+    fi
+
+    # Check if already patched
+    if grep -q 'python-dateutil>=2.8.2,<3' "$pyproject"; then
+        return 0
+    fi
+
+    log "$BLUE" "[Patch] Relaxing frappe's python-dateutil constraint..."
+    sed -i 's/"python-dateutil~=2.8.2"/"python-dateutil>=2.8.2,<3"/g' "$pyproject"
+    log "$GREEN" "  ✓ Patched python-dateutil requirement."
 }
 
 bench_is_initialized() {
@@ -70,6 +79,7 @@ seed_bench_from_template() {
     )
     find "$BENCH_DIR/env/bin/" -type f -exec sed -i "s|$FRAPPE_TEMPLATE_DIR|$BENCH_DIR|g" {} \;
     find "$BENCH_DIR/env/bin/" -type f -exec sed -i "s|#!/usr/bin/env python|#!/$BENCH_DIR/env/bin/python|g" {} \;
+    patch_frappe_dateutil_requirement
     cd "$BENCH_DIR/apps/frappe" && "$BENCH_DIR/env/bin/pip" install -e .
     touch "$BENCH_DIR/$BENCH_REQUIREMENTS_SENTINEL"
     log "$GREEN" "  ✓ Bench seeded from template."
@@ -107,6 +117,7 @@ rebuild_bench() {
         find "$BENCH_DIR/env/bin/" -type f -exec sed -i "s|$tmp_name|$BENCH_DIR|g" {} \;
         # Fix shebang to use venv python
         find "$BENCH_DIR/env/bin/" -type f -exec sed -i "s|#!/usr/bin/env python|#!/$BENCH_DIR/env/bin/python|g" {} \;
+        patch_frappe_dateutil_requirement
         cd "$BENCH_DIR/apps/frappe" && "$BENCH_DIR/env/bin/pip" install -e .
         cd "$BENCH_DIR" && bench setup requirements
         touch "$BENCH_DIR/$BENCH_REQUIREMENTS_SENTINEL"
@@ -134,10 +145,12 @@ ensure_bench_ready() {
         log "$GREEN" "✅ Bench detected at $BENCH_DIR (keeping existing files)"
         cd "$BENCH_DIR"
         if [ ! -f "$BENCH_DIR/$BENCH_REQUIREMENTS_SENTINEL" ]; then
+            patch_frappe_dateutil_requirement
             bench setup requirements
             touch "$BENCH_DIR/$BENCH_REQUIREMENTS_SENTINEL"
         fi
         # Ensure frappe is installed in the venv
+        patch_frappe_dateutil_requirement
         cd "$BENCH_DIR/apps/frappe" && "$BENCH_DIR/env/bin/pip" install -e .
         export PATH="$BENCH_DIR/env/bin:$PATH"
     else
