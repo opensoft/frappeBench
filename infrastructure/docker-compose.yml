@@ -1,0 +1,99 @@
+# Shared infrastructure stack (MariaDB + Redis) for all Frappe workspaces
+name: frappe-infra
+
+services:
+  # MariaDB Database (shared)
+  mariadb:
+    image: mariadb:10.6
+    container_name: frappe-mariadb
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_PASSWORD:-frappe}
+      - MYSQL_DATABASE=frappe
+      - MYSQL_USER=frappe
+      - MYSQL_PASSWORD=${DB_PASSWORD:-frappe}
+    volumes:
+      - mariadb-data:/var/lib/mysql
+    networks:
+      - frappe-network
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost",
+          "-u",
+          "root",
+          "-p${DB_PASSWORD:-frappe}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache (shared)
+  redis-cache:
+    image: redis:alpine
+    container_name: frappe-redis-cache
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-cache-data:/data
+    networks:
+      - frappe-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Queue (shared)
+  redis-queue:
+    image: redis:alpine
+    container_name: frappe-redis-queue
+    volumes:
+      - redis-queue-data:/data
+    networks:
+      - frappe-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis SocketIO (shared)
+  redis-socketio:
+    image: redis:alpine
+    container_name: frappe-redis-socketio
+    volumes:
+      - redis-socketio-data:/data
+    networks:
+      - frappe-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mariadb-data:
+    name: mariadb-data-frappeBench
+    external: true
+  redis-cache-data:
+    name: redis-cache-data-frappeBench
+    external: true
+  redis-queue-data:
+    name: redis-queue-data-frappeBench
+    external: true
+  redis-socketio-data:
+    name: redis-socketio-data-frappeBench
+    external: true
+
+networks:
+  frappe-network:
+    name: frappe-network
+    external: true

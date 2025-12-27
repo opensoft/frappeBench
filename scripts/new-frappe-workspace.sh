@@ -113,6 +113,14 @@ mkdir -p "${NEW_DIR}/scripts"
 log_success "Workspace directory created"
 echo ""
 
+# Link shared scripts into workspace
+log_subsection "[1.5/3] Linking shared scripts..."
+for script in setup-frappe.sh setup_stack.sh; do
+    ln -sf "/repo/scripts/${script}" "${NEW_DIR}/scripts/${script}"
+done
+log_success "Script symlinks created"
+echo ""
+
 # Step 2: Copy devcontainer template
 log_subsection "[2/3] Setting up devcontainer configuration..."
 if [ ! -d "${GIT_ROOT}/devcontainer.example" ]; then
@@ -153,7 +161,16 @@ USER_UID=$(id -u)
 USER_GID=$(id -g)
 
 # Docker Compose requires lowercase project names
-COMPOSE_NAME=$(echo "${PROJECT_NAME}-${WORKSPACE_NAME}" | tr '[:upper:]' '[:lower:]')
+COMPOSE_NAME=$(echo "frappe-${WORKSPACE_NAME}" | tr '[:upper:]' '[:lower:]')
+
+# Calculate nginx host port (optional, used with production profile)
+NGINX_BASE_PORT=8081
+if [ $NATO_INDEX -eq -1 ]; then
+    NGINX_PORT_OFFSET=$(echo -n "$WORKSPACE_NAME" | cksum | cut -d' ' -f1)
+    NGINX_HOST_PORT=$((NGINX_BASE_PORT + (NGINX_PORT_OFFSET % 50)))
+else
+    NGINX_HOST_PORT=$((NGINX_BASE_PORT + NATO_INDEX))
+fi
 
 # Update .devcontainer/.env with workspace-specific settings
 cat > "${NEW_DIR}/.devcontainer/.env" << EOF
@@ -162,8 +179,11 @@ PROJECT_NAME=${PROJECT_NAME}
 COMPOSE_PROJECT_NAME=${COMPOSE_NAME}
 
 # Workspace: ${WORKSPACE_NAME}
+WORKSPACE_NAME=${WORKSPACE_NAME}
 CODENAME=${WORKSPACE_NAME}
 HOST_PORT=${HOST_PORT}
+NGINX_HOST_PORT=${NGINX_HOST_PORT}
+INFRA_DEBUG=0
 
 # User configuration
 USER=${USER}
@@ -189,6 +209,7 @@ APP_BRANCH=main
 
 # Bench configuration
 FRAPPE_BENCH_PATH=/workspace/bench
+BENCH_DISABLE_UV=0
 
 # Resource Limits
 CONTAINER_MEMORY=4g

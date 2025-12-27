@@ -83,7 +83,7 @@ rebuild_bench() {
         --skip-redis-config-generation \
         --verbose
     cd "$BENCH_DIR"
-    "$BENCH_DIR/env/bin/bench" setup requirements
+    bench setup requirements
     log "$GREEN" "  ✓ Bench initialization complete."
 }
 
@@ -99,6 +99,16 @@ ensure_bench_ready() {
     else
         rebuild_bench
         export PATH="$BENCH_DIR/env/bin:$PATH"
+    fi
+}
+
+ensure_bench_cli() {
+    local bench_bin="$BENCH_DIR/env/bin/bench"
+    if [ ! -x "$bench_bin" ]; then
+        log "$YELLOW" "[Bench] Installing bench into venv..."
+        if ! "$BENCH_DIR/env/bin/python" -m pip install --upgrade frappe-bench; then
+            log "$YELLOW" "[Bench] Failed to install bench into venv; falling back to global bench."
+        fi
     fi
 }
 
@@ -263,6 +273,7 @@ log "$BLUE" "🚀 Frappe Bench Setup starting..."
 echo "========================================"
 
 ensure_bench_ready
+ensure_bench_cli
 get_custom_apps
 ensure_apps_txt
 

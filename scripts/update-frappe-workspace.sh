@@ -79,10 +79,8 @@ update_single_workspace() {
     
     # Required script symlinks
     declare -a required_scripts=(
-        "init-bench.sh"
-        "setup-workspace.sh"
-        "bench-watchdog.sh"
-        "daemonize.sh"
+        "setup-frappe.sh"
+        "setup_stack.sh"
     )
     
     for script in "${required_scripts[@]}"; do
@@ -104,37 +102,71 @@ update_single_workspace() {
     log_subsection "[3/4] Preserving workspace environment configuration..."
     
     if [ -f "${workspace_dir}/.devcontainer/.env.backup" ]; then
-        # Extract workspace name from existing .env to validate it
+        # Extract workspace details from existing .env
+        existing_project_name=$(grep "^PROJECT_NAME=" "${workspace_dir}/.devcontainer/.env.backup" | cut -d= -f2)
         existing_codename=$(grep "^CODENAME=" "${workspace_dir}/.devcontainer/.env.backup" | cut -d= -f2)
-        existing_container=$(grep "^CONTAINER_NAME=" "${workspace_dir}/.devcontainer/.env.backup" | cut -d= -f2)
-        existing_project=$(grep "^COMPOSE_PROJECT_NAME=" "${workspace_dir}/.devcontainer/.env.backup" | cut -d= -f2)
+        existing_workspace=$(grep "^WORKSPACE_NAME=" "${workspace_dir}/.devcontainer/.env.backup" | cut -d= -f2)
+        existing_compose=$(grep "^COMPOSE_PROJECT_NAME=" "${workspace_dir}/.devcontainer/.env.backup" | cut -d= -f2)
         existing_port=$(grep "^HOST_PORT=" "${workspace_dir}/.devcontainer/.env.backup" | cut -d= -f2)
+        existing_nginx_port=$(grep "^NGINX_HOST_PORT=" "${workspace_dir}/.devcontainer/.env.backup" | cut -d= -f2)
         existing_user=$(grep "^USER=" "${workspace_dir}/.devcontainer/.env.backup" | cut -d= -f2)
         existing_uid=$(grep "^UID=" "${workspace_dir}/.devcontainer/.env.backup" | cut -d= -f2)
         existing_gid=$(grep "^GID=" "${workspace_dir}/.devcontainer/.env.backup" | cut -d= -f2)
-        existing_db_name=$(grep "^DB_NAME=" "${workspace_dir}/.devcontainer/.env.backup" | cut -d= -f2)
         existing_site=$(grep "^SITE_NAME=" "${workspace_dir}/.devcontainer/.env.backup" | cut -d= -f2)
+        existing_memory=$(grep "^CONTAINER_MEMORY=" "${workspace_dir}/.devcontainer/.env.backup" | cut -d= -f2)
+        existing_cpus=$(grep "^CONTAINER_CPUS=" "${workspace_dir}/.devcontainer/.env.backup" | cut -d= -f2)
+
+        if [ -z "$existing_workspace" ]; then
+            existing_workspace="$existing_codename"
+        fi
+        if [ -z "$existing_compose" ] && [ -n "$existing_workspace" ]; then
+            existing_compose="frappe-${existing_workspace}"
+        fi
+        if [[ "$existing_compose" == frappeworkspace-* ]]; then
+            existing_compose="frappe-${existing_compose#frappeworkspace-}"
+        fi
+        if [[ "$existing_compose" == frappebench-* ]]; then
+            existing_compose="frappe-${existing_compose#frappebench-}"
+        fi
+        if [ -z "$existing_project_name" ]; then
+            existing_project_name="$PROJECT_NAME"
+        fi
+        if [ -z "$existing_port" ]; then
+            existing_port="8201"
+        fi
+        if [ -z "$existing_nginx_port" ]; then
+            existing_nginx_port="8081"
+        fi
+        if [ -z "$existing_memory" ]; then
+            existing_memory="4g"
+        fi
+        if [ -z "$existing_cpus" ]; then
+            existing_cpus="2"
+        fi
         
         # Recreate .env with existing settings
         cat > "${workspace_dir}/.devcontainer/.env" << EOF
-# Workspace: ${existing_codename}
+# Project Configuration
+PROJECT_NAME=${existing_project_name}
+COMPOSE_PROJECT_NAME=${existing_compose}
+
+# Workspace: ${existing_workspace}
+WORKSPACE_NAME=${existing_workspace}
 CODENAME=${existing_codename}
-CONTAINER_NAME=${existing_container}
-COMPOSE_PROJECT_NAME=${existing_project}
 HOST_PORT=${existing_port}
+NGINX_HOST_PORT=${existing_nginx_port}
 
 # User configuration
 USER=${existing_user}
 UID=${existing_uid}
 GID=${existing_gid}
 
-# Database configuration (uses existing frappe-mariadb container)
+# Database configuration (uses shared frappe-infra stack)
 DB_HOST=frappe-mariadb
 DB_PORT=3306
 DB_PASSWORD=frappe
-DB_NAME=${existing_db_name}
 
-# Redis configuration (uses existing frappe redis containers)
+# Redis configuration (uses shared frappe-infra stack)
 REDIS_CACHE=frappe-redis-cache:6379
 REDIS_QUEUE=frappe-redis-queue:6379
 REDIS_SOCKETIO=frappe-redis-socketio:6379
@@ -148,6 +180,11 @@ APP_BRANCH=main
 
 # Bench configuration
 FRAPPE_BENCH_PATH=/workspace/bench
+BENCH_DISABLE_UV=0
+
+# Resource Limits
+CONTAINER_MEMORY=${existing_memory}
+CONTAINER_CPUS=${existing_cpus}
 EOF
         log_success "Environment configuration preserved"
         

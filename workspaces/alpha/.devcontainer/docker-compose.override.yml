@@ -33,9 +33,9 @@ services:
       # Anthropic Claude Code CLI Authentication
       # Required for: VS Code Claude Code extension, Claude CLI tools
       # Location: ~/.claude/ contains API keys and session data
-      - ~/.claude:/home/${USER:-vscode}/.claude:cached
+      # - ~/.claude:/home/${USER:-vscode}/.claude:cached
       # Claude Code IDE configuration file
-      - ~/.claude.json:/home/${USER:-vscode}/.claude.json:cached
+      # - ~/.claude.json:/home/${USER:-vscode}/.claude.json:cached
 
       # Google Gemini CLI Authentication
       # Required for: VS Code Gemini extension, Gemini CLI tools

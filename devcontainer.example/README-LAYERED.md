@@ -91,3 +91,20 @@ workbench-base:brett (Layer 0)
 ```
 
 Shared services: MariaDB, Redis (cache/queue/socketio)
+
+## Shared Infrastructure Stack
+
+Database and Redis are now shared across all workspaces via the **frappe-infra** stack.
+
+Start it once:
+
+```bash
+cd /home/brett/projects/workBenches/devBenches/frappeBench/infrastructure
+docker compose up -d
+```
+
+Workspace stacks then connect to:
+- `frappe-mariadb`
+- `frappe-redis-cache`
+- `frappe-redis-queue`
+- `frappe-redis-socketio`

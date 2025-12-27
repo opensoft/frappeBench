@@ -21,7 +21,7 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT_DIR="${PROJECT_ROOT}/scripts"
 
 # Step 1: Check prerequisites
-echo -e "${BLUE}[1/3] Checking prerequisites...${NC}"
+echo -e "${BLUE}[1/4] Checking prerequisites...${NC}"
 
 # Check if devcontainer.example exists
 if [ ! -d "${PROJECT_ROOT}/devcontainer.example" ]; then
@@ -46,8 +46,23 @@ fi
 echo -e "${GREEN}  ✓ delete-frappe-workspace.sh found${NC}"
 echo ""
 
-# Step 2: Ensure workspaces folder exists and check existing workspaces
-echo -e "${BLUE}[2/3] Checking workspaces directory...${NC}"
+# Step 2: Pre-pull infra images to speed first run
+echo -e "${BLUE}[2/4] Pre-pulling infra images...${NC}"
+if command -v docker >/dev/null 2>&1; then
+    for image in mariadb:10.6 redis:alpine nginx:alpine; do
+        if docker pull "$image" >/dev/null; then
+            echo -e "${GREEN}  ✓ Pulled ${image}${NC}"
+        else
+            echo -e "${YELLOW}  ⚠ Failed to pull ${image} (continuing)${NC}"
+        fi
+    done
+else
+    echo -e "${YELLOW}  ⚠ Docker not available; skipping image pulls${NC}"
+fi
+echo ""
+
+# Step 3: Ensure workspaces folder exists and check existing workspaces
+echo -e "${BLUE}[3/4] Checking workspaces directory...${NC}"
 if [ ! -d "${PROJECT_ROOT}/workspaces" ]; then
     mkdir -p "${PROJECT_ROOT}/workspaces"
     echo -e "${GREEN}  ✓ Created workspaces directory${NC}"
@@ -130,8 +145,8 @@ else
 fi
 echo ""
 
-# Step 3: Create alpha workspace if it doesn't exist
-echo -e "${BLUE}[3/3] Checking default workspace...${NC}"
+# Step 4: Create alpha workspace if it doesn't exist
+echo -e "${BLUE}[4/4] Checking default workspace...${NC}"
 if [ ! -d "${PROJECT_ROOT}/workspaces/alpha" ] || [ ! -d "${PROJECT_ROOT}/workspaces/alpha/.devcontainer" ]; then
     if [ -d "${PROJECT_ROOT}/workspaces/alpha" ]; then
         echo -e "${YELLOW}  → Incomplete alpha workspace found, recreating...${NC}"

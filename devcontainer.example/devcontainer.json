@@ -1,11 +1,11 @@
 {
-  "name": "${containerEnv:PROJECT_NAME:Frappe Development}",
+  "name": "Frappe Workspace (${containerEnv:WORKSPACE_NAME:workspace})",
   "_devcontainer_version": "1.0.0",
   "_template_version": "frappe-devcontainer-1.0.0",
   "dockerComposeFile": ["docker-compose.yml", "docker-compose.override.yml"],
   "service": "frappe",
   "workspaceFolder": "/workspace",
-  "initializeCommand": "rm -rf /tmp/vscode-extensions-* || true",
+  "initializeCommand": "bash .devcontainer/scripts/start-infra.sh && rm -rf /tmp/vscode-extensions-* || true",
 
   "forwardPorts": [8081, 9000, 1455],
 
@@ -24,10 +24,6 @@
     }
   },
   "runServices": [
-    "mariadb",
-    "redis-cache",
-    "redis-queue",
-    "redis-socketio",
     "worker-default",
     "worker-short",
     "worker-long",
@@ -110,12 +106,6 @@
     "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "64000"
   },
 
-  "postCreateCommand": {
-    "env": "cp --update=none .devcontainer/.env.example .devcontainer/.env || true",
-    "cleanup": "rm -rf /home/${localEnv:USER}/.vscode-server/extensions/.* 2>/dev/null || true",
-    "fix-claude-logo": "bash -c 'for dir in /home/${localEnv:USER}/.vscode-server/extensions/anthropic.claude-code-*/resources/; do [ -d \"$dir\" ] && cp .devcontainer/assets/claude-logo.svg \"$dir\" 2>/dev/null; done' || true",
-    "setup": "bash scripts/setup-frappe.sh",
-    "stack": "bash scripts/setup_stack.sh"
-  },
+  "postCreateCommand": "cp --update=none .devcontainer/.env.example .devcontainer/.env || true && rm -rf /home/${localEnv:USER}/.vscode-server/extensions/.* 2>/dev/null || true && bash -c 'for dir in /home/${localEnv:USER}/.vscode-server/extensions/anthropic.claude-code-*/resources/; do [ -d \"$dir\" ] && cp .devcontainer/assets/claude-logo.svg \"$dir\" 2>/dev/null; done' || true && bash scripts/setup-frappe.sh && bash scripts/setup_stack.sh",
   "postAttachCommand": "echo 'Connected to Frappe development environment'"
 }
