@@ -21,7 +21,7 @@ Use the automated script:
 ./scripts/new-frappe-workspace.sh
 ```
 
-Or manually:
+Template maintenance only (not for end users):
 ```bash
 cp -r devcontainer.example workspaces/my-workspace/.devcontainer
 cd workspaces/my-workspace

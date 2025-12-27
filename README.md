@@ -29,30 +29,33 @@ A complete Frappe development environment with devcontainer support for VSCode, 
 
 ## Getting Started
 
-1. **Copy environment file**:
+1. **Create a workspace**:
    ```bash
-   cp .devcontainer/.env.example .devcontainer/.env
+   ./scripts/new-frappe-workspace.sh alpha
    ```
+   This creates `workspaces/alpha/` with a workspace-specific `.devcontainer` and `.env`.
 
-2. **Open in VSCode**:
-   - Open this folder in VSCode
+2. **Open the workspace in VSCode**:
+   - Open `workspaces/alpha/` in VSCode
    - Click "Reopen in Container" when prompted
    - Or use Command Palette: "Dev Containers: Reopen in Container"
 
 3. **Initialize Frappe** (first time only):
    ```bash
-   ./.devcontainer/setup-frappe.sh
+   ./scripts/setup-frappe.sh
    ```
+   This runs automatically on first container build; re-run if needed.
 
 4. **Start Frappe**:
    ```bash
-   cd /workspace/development/frappe-bench
+   cd /workspace/bench
    bench start
    ```
 
 5. **Access the site**:
-   - Open browser to http://localhost:8080
-   - Default credentials: Administrator / admin (or as set in .env)
+   - Open browser to `http://localhost:${HOST_PORT}` from `workspaces/alpha/.devcontainer/.env`
+   - Defaults: alpha → 8001, bravo → 8002
+   - Credentials: Administrator / admin (or as set in `.devcontainer/.env`)
 
 ## Development
 
@@ -74,13 +77,13 @@ A complete Frappe development environment with devcontainer support for VSCode, 
 bench new-app app_name
 
 # Install an app to site
-bench --site site1.localhost install-app app_name
+bench --site ${SITE_NAME} install-app app_name
 
 # Run migrations
-bench --site site1.localhost migrate
+bench --site ${SITE_NAME} migrate
 
 # Access MariaDB
-bench --site site1.localhost mariadb
+bench --site ${SITE_NAME} mariadb
 
 # Clear cache
 bench clear-cache
@@ -88,10 +91,10 @@ bench clear-cache
 
 ## Configuration
 
-- `.devcontainer/.env`: Environment variables for containers
-- `.devcontainer/devcontainer.json`: VSCode devcontainer config
-- `.devcontainer/docker-compose.yml`: Container orchestration
-- `.devcontainer/Dockerfile`: Custom dev container image
+- `workspaces/<name>/.devcontainer/.env`: Environment variables for containers
+- `workspaces/<name>/.devcontainer/devcontainer.json`: VSCode devcontainer config
+- `workspaces/<name>/.devcontainer/docker-compose.yml`: Container orchestration
+- `workspaces/<name>/.devcontainer/Dockerfile`: Custom dev container image
 
 ## Architecture
 
@@ -115,7 +118,7 @@ frappeBench uses the workBenches multi-layer architecture:
 
 ### Service Architecture
 
-The devcontainer mounts the project at `/workspace` and creates a Frappe bench at `/workspace/development/frappe-bench`. All services communicate over the `frappe-network` Docker network.
+The devcontainer mounts the project at `/workspace` and creates a Frappe bench at `/workspace/bench`. All services communicate over the `frappe-network` Docker network.
 
 For detailed Layer 2 tools and rationale, see [Architecture Documentation](docs/ARCHITECTURE.md).
 

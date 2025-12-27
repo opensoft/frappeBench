@@ -208,11 +208,12 @@ Each workspace is created with this structure:
 workspaces/
 └── WORKSPACE_NAME/
     ├── .devcontainer/
-    │   ├── Dockerfile
+    │   ├── Dockerfile.old-monolithic
     │   ├── devcontainer.json
     │   ├── docker-compose.yml
     │   ├── docker-compose.override.yml
     │   ├── .env
+    │   ├── frappe-stack.json
     │   └── [other config files]
     ├── bench/
     │   ├── apps/
@@ -234,7 +235,7 @@ Each workspace has `.devcontainer/.env` with:
 - `SITE_NAME` - Frappe site name
 
 ### Port Assignment
-- **NATO names** (alpha, bravo, etc.): Sequential ports (8201, 8202, ...)
+- **NATO names** (alpha, bravo, etc.): Sequential ports (8001, 8002, ...)
 - **Custom names**: Hash-based port assignment
 
 ## Troubleshooting
@@ -243,7 +244,7 @@ Each workspace has `.devcontainer/.env` with:
 If running from another project:
 ```bash
 cd /path/to/frappe/project
-scripts/new-workspace.sh
+scripts/new-frappe-workspace.sh
 ```
 
 ### AI Not Available
@@ -258,7 +259,7 @@ rm -rf workspaces/WORKSPACE_NAME
 ### Port Conflicts
 Check assigned ports in `.devcontainer/.env`:
 ```bash
-grep HOST_PORT workspaces/*/. devcontainer/.env
+grep HOST_PORT workspaces/*/.devcontainer/.env
 ```
 
 ## Version History

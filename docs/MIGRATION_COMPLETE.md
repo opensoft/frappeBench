@@ -1,5 +1,7 @@
 # Migration Complete: Worktrees → Standard Frappe
 
+**Note**: All commands assume you are in a workspace root (e.g., `workspaces/alpha`).
+
 ## ✅ What Was Changed
 
 ### Files Deleted
@@ -11,7 +13,7 @@
 
 ### Files Modified
 - ✅ `.devcontainer/devcontainer.json` - Removed mount generation, simplified
-- ✅ `.devcontainer/setup-frappe.sh` - Added CUSTOM_APPS support, removed worktree calls
+- ✅ `scripts/setup-frappe.sh` - Added CUSTOM_APPS support, removed worktree calls
 - ✅ `.devcontainer/.env` - Added CUSTOM_APPS variable
 - ✅ `.devcontainer/.env.example` - Added CUSTOM_APPS variable
 
@@ -87,7 +89,7 @@ docker compose -f .devcontainer/docker-compose.yml up -d
 docker ps
 
 # Should see:
-# - frappe-dev
+# - frappe-bench
 # - frappe-mariadb
 # - frappe-redis-cache
 # - frappe-redis-queue
@@ -101,24 +103,24 @@ docker ps
 
 **If fails**: Check logs
 ```bash
-docker logs frappe-dev
-docker logs frappe-mariadb
+docker compose -f .devcontainer/docker-compose.yml logs frappe
+docker compose -f .devcontainer/docker-compose.yml logs mariadb
 ```
 
 ### Test 2: Bench Initialized Successfully
 
-**Expected**: Frappe bench created at `/workspace/development/frappe-bench`
+**Expected**: Frappe bench created at `/workspace/bench`
 
 ```bash
 # In container terminal
-cd /workspace/development/frappe-bench
+cd /workspace/bench
 
 # Check bench exists
 ls -la
 
 # Should see:
 # - apps/ (with frappe/)
-# - sites/ (with site1.localhost/)
+# - sites/ (with ${SITE_NAME}/)
 # - env/ (Python virtualenv)
 # - config/
 ```
@@ -127,7 +129,7 @@ ls -la
 ```bash
 # Setup script logs are shown during postCreateCommand
 # Or run manually:
-bash .devcontainer/setup-frappe.sh
+bash scripts/setup-frappe.sh
 ```
 
 ### Test 3: Custom Apps Installed (if configured)
@@ -144,13 +146,13 @@ ls apps/
 cat sites/apps.txt
 
 # Check app is installed to site
-bench --site site1.localhost list-apps
+bench --site ${SITE_NAME} list-apps
 ```
 
 **If fails**: Install manually
 ```bash
 bench get-app https://github.com/opensoft/dartwing-frappe
-bench --site site1.localhost install-app dartwing
+bench --site ${SITE_NAME} install-app dartwing
 ```
 
 ### Test 4: Bench Starts Successfully
@@ -158,7 +160,7 @@ bench --site site1.localhost install-app dartwing
 **Expected**: `bench start` runs without errors
 
 ```bash
-cd /workspace/development/frappe-bench
+cd /workspace/bench
 
 # Start bench
 bench start
@@ -184,7 +186,7 @@ bench start web
 **Expected**: Frappe site loads in browser
 
 1. In container, run: `bench start`
-2. In browser, go to: `http://localhost:8000`
+2. In browser, go to: `http://localhost:${HOST_PORT}`
 3. Login with:
    - Username: `Administrator`
    - Password: `admin` (or value from .env)
@@ -192,10 +194,10 @@ bench start web
 **If fails**:
 ```bash
 # Check if port is forwarded
-# VSCode should auto-forward port 8000
+# VSCode should auto-forward ports 9000/1455; bench is on HOST_PORT
 
 # Or check port manually
-curl http://localhost:8000
+curl http://localhost:${HOST_PORT}
 ```
 
 ### Test 6: App Development Workflow
@@ -209,7 +211,7 @@ vim apps/dartwing/dartwing/api/v1.py
 # Restart bench (Ctrl+C, then bench start)
 
 # Changes should be reflected
-curl http://localhost:8000/api/v1/test
+curl http://localhost:${HOST_PORT}/api/v1/test
 ```
 
 ### Test 7: Branch Switching Works
@@ -262,9 +264,9 @@ CUSTOM_APPS=myapp:https://github.com/me/myapp:develop
 # Rebuild container
 
 # Method 2: Manually (after rebuild)
-cd /workspace/development/frappe-bench
+cd /workspace/bench
 bench get-app https://github.com/me/myapp
-bench --site site1.localhost install-app myapp
+bench --site ${SITE_NAME} install-app myapp
 ```
 
 ### Switching Branches
@@ -336,7 +338,7 @@ cat sites/apps.txt
 echo "myapp" >> sites/apps.txt
 
 # Then install to site:
-bench --site site1.localhost install-app myapp
+bench --site ${SITE_NAME} install-app myapp
 ```
 
 ### Issue: Module import error
@@ -365,7 +367,7 @@ pip install -e apps/myapp
 bench doctor
 
 # If corrupted, rebuild:
-rm -rf /workspace/development/frappe-bench
+rm -rf /workspace/bench
 # Rebuild container
 ```
 
@@ -379,7 +381,7 @@ rm -rf /workspace/development/frappe-bench
 docker ps --filter "name=mariadb"
 
 # Check MariaDB logs
-docker logs frappe-mariadb
+docker compose -f .devcontainer/docker-compose.yml logs mariadb
 
 # Restart MariaDB
 docker restart frappe-mariadb
@@ -441,7 +443,7 @@ bench new-site prod.myapp.localhost
 bench --site prod.myapp.localhost install-app myapp
 
 # Now you have:
-# - site1.localhost (dev)
+# - ${SITE_NAME} (dev)
 # - prod.myapp.localhost (prod)
 
 # Switch app to production branch when testing prod site

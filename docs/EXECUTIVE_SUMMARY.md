@@ -17,7 +17,7 @@ This devcontainer provides a **complete, containerized Frappe development enviro
 
 ### Container Stack
 ```
-frappe-dev          Main development container (this is where you work)
+frappe-bench        Main development container (service: frappe)
 frappe-mariadb      Database server (MariaDB 10.6)
 frappe-redis-*      Cache, Queue, SocketIO (3x Redis instances)
 frappe-worker-*     Background job processors (3x workers)
@@ -35,7 +35,7 @@ frappe-nginx        Reverse proxy (optional, for production profile)
         │   ├── frappe/            # Core framework (auto-installed)
         │   └── your-app/          # Custom apps (via bench get-app)
         ├── sites/                 # Frappe sites
-        │   ├── site1.localhost/   # Default site
+        │   ├── ${SITE_NAME}/   # Default site
         │   └── apps.txt           # Installed apps list
         ├── env/                   # Python virtual environment
         ├── config/                # Bench configuration
@@ -58,7 +58,7 @@ bench get-app https://github.com/your-org/your-app
 bench get-app --branch develop https://github.com/your-org/your-app
 
 # Install to site
-bench --site site1.localhost install-app your-app
+bench --site ${SITE_NAME} install-app your-app
 ```
 
 **Why this is simple:**
@@ -77,22 +77,21 @@ bench --site site1.localhost install-app your-app
 
 ## 🚀 Quick Start
 
-### 1. Clone and Configure
+### 1. Clone and Create a Workspace
 
 ```bash
 # Clone this repo
 git clone <this-repo-url>
 cd frappeBench
 
-# (Optional) Configure custom apps
-cp .devcontainer/.env.example .devcontainer/.env
-# Edit .env and set CUSTOM_APPS if desired
+# Create a workspace (alpha, bravo, ...)
+./scripts/new-frappe-workspace.sh alpha
 ```
 
 ### 2. Open in VSCode
 
 ```
-File → Open Folder → frappeBench/
+File → Open Folder → workspaces/alpha/
 Click "Reopen in Container" when prompted
 ```
 
@@ -107,11 +106,11 @@ First time: ~10 minutes
 ### 4. Start Developing
 
 ```bash
-cd /workspace/development/frappe-bench
+cd /workspace/bench
 bench start
 ```
 
-Access at: http://localhost:8000 (admin/admin)
+Access at: http://localhost:${HOST_PORT} (admin/admin)
 
 ---
 
@@ -121,7 +120,7 @@ Access at: http://localhost:8000 (admin/admin)
 
 **Method 1: Environment Variable (before container build)**
 
-Edit `.devcontainer/.env`:
+Edit `workspaces/<name>/.devcontainer/.env`:
 ```bash
 CUSTOM_APPS=dartwing:https://github.com/opensoft/dartwing-frappe:develop,erpnext
 ```
@@ -131,9 +130,9 @@ Rebuild container: VSCode → Rebuild Container
 **Method 2: Manual (after container is running)**
 
 ```bash
-cd /workspace/development/frappe-bench
+cd /workspace/bench
 bench get-app https://github.com/opensoft/dartwing-frappe
-bench --site site1.localhost install-app dartwing
+bench --site ${SITE_NAME} install-app dartwing
 ```
 
 ### Switching Branches
@@ -163,7 +162,7 @@ git push
 ### Running Tests
 
 ```bash
-bench --site site1.localhost run-tests --app your-app
+bench --site ${SITE_NAME} run-tests --app your-app
 ```
 
 ---
@@ -173,12 +172,12 @@ bench --site site1.localhost run-tests --app your-app
 ### Phase 1: initializeCommand (Host)
 - Cleans up temporary extension files
 
-### Phase 2: Container Build
-- Installs Ubuntu 22.04 + Python 3.10 + Node 20.x
-- Installs Frappe dependencies
-- Creates user matching host UID/GID (no permission issues!)
-- Installs zsh + Oh My Zsh
-- Starts all service containers (MariaDB, Redis, etc.)
+### Phase 2: Container Start (Layered Images)
+- Uses prebuilt layered image `frappe-bench:${USER}` (Layer 2)
+- Layer chain: `workbench-base` → `devbench-base` → `frappe-bench`
+- No monolithic package installs during devcontainer startup
+- Build Layer 2 when needed: `./build-layer2.sh --user <name>`
+- Starts service containers (MariaDB, Redis, etc.)
 
 ### Phase 3: postCreateCommand (Container)
 - Runs `setup-frappe.sh`:
@@ -196,12 +195,12 @@ bench --site site1.localhost run-tests --app your-app
 
 ## 🎛️ Configuration
 
-### Environment Variables (.devcontainer/.env)
+### Environment Variables (workspaces/<name>/.devcontainer/.env)
 
 ```bash
 # Project settings
 PROJECT_NAME=frappeBench
-FRAPPE_SITE_NAME=site1.localhost
+SITE_NAME=alpha.localhost
 ADMIN_PASSWORD=admin
 
 # Custom apps (comma-separated)
@@ -218,7 +217,7 @@ DB_PASSWORD=frappe
 
 ### Container Resources
 
-Adjust in `.env`:
+Adjust in `workspaces/<name>/.devcontainer/.env`:
 ```bash
 CONTAINER_MEMORY=8g  # Increase for large databases
 CONTAINER_CPUS=4     # Increase for parallel builds
@@ -230,6 +229,7 @@ CONTAINER_CPUS=4     # Increase for parallel builds
 
 ### Container Won't Start
 ```bash
+cd workspaces/<name>
 docker compose -f .devcontainer/docker-compose.yml down
 docker compose -f .devcontainer/docker-compose.yml up -d
 # Or in VSCode: Rebuild Container
@@ -244,7 +244,7 @@ cat sites/apps.txt
 echo "your-app" >> sites/apps.txt
 
 # Install to site
-bench --site site1.localhost install-app your-app
+bench --site ${SITE_NAME} install-app your-app
 ```
 
 ### Database Connection Failed
@@ -253,7 +253,8 @@ bench --site site1.localhost install-app your-app
 docker ps --filter "name=mariadb"
 
 # Test connection
-docker exec frappe-dev mysql -h mariadb -u root -pfrappe -e "SHOW DATABASES;"
+docker compose -f .devcontainer/docker-compose.yml exec frappe \
+  mysql -h mariadb -u root -pfrappe -e "SHOW DATABASES;"
 
 # Restart MariaDB
 docker restart frappe-mariadb
@@ -262,11 +263,11 @@ docker restart frappe-mariadb
 ### Bench Validation Failed
 ```bash
 # Check bench health
-cd /workspace/development/frappe-bench
+cd /workspace/bench
 bench doctor
 
 # Rebuild bench if corrupted
-rm -rf /workspace/development/frappe-bench
+rm -rf /workspace/bench
 # Rebuild container to reinitialize
 ```
 
@@ -316,9 +317,11 @@ rm -rf /workspace/development/frappe-bench
 
 - **[README.md](./README.md)** - Quick start and common commands
 - **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Technical deep-dive
-- **[Dockerfile](./Dockerfile)** - Container image definition
-- **[docker-compose.yml](./docker-compose.yml)** - Service orchestration
-- **[setup-frappe.sh](./setup-frappe.sh)** - Bench initialization script
+- **[Dockerfile.layer2](../Dockerfile.layer2)** - Layer 2 image definition
+- **[build-layer2.sh](../build-layer2.sh)** - Layer 2 image build script
+- **[devcontainer.example/docker-compose.yml](../devcontainer.example/docker-compose.yml)** - Service orchestration template
+- **[devcontainer.example/devcontainer.json](../devcontainer.example/devcontainer.json)** - Devcontainer template
+- **[scripts/setup-frappe.sh](../scripts/setup-frappe.sh)** - Bench initialization script
 
 ---
 

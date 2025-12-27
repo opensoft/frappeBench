@@ -20,9 +20,9 @@ This devcontainer provides a **complete Frappe development environment** using D
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ VSCode Dev Container (frappe-dev)                           │
+│ VSCode Dev Container (frappe-bench)                         │
 │ ┌─────────────────────────────────────────────────────────┐ │
-│ │ /workspace/development/frappe-bench/                    │ │
+│ │ /workspace/bench/                    │ │
 │ │ ├── apps/          # Frappe apps (cloned via bench)     │ │
 │ │ ├── sites/         # Frappe sites                       │ │
 │ │ ├── env/           # Python virtualenv                  │ │
@@ -48,8 +48,9 @@ This devcontainer provides a **complete Frappe development environment** using D
 All services communicate via Docker network (`frappe-network`):
 - Service names resolve via Docker DNS (e.g., `mariadb`, `redis-cache`)
 - No port mapping needed for inter-service communication
-- Only port 8081 exposed to host (Nginx, optional)
-- VSCode forwards ports 8081, 9000, 1455 automatically
+- Bench is exposed via `${HOST_PORT}` → `8000` (set per workspace in `.devcontainer/.env`)
+- Nginx (optional) uses `${NGINX_HOST_PORT}` → `80` when production profile is enabled
+- VSCode forwards ports 8081 (default nginx), 9000, and 1455 automatically
 
 ---
 
@@ -59,9 +60,9 @@ All services communicate via Docker network (`frappe-network`):
 
 **Trigger**: VSCode initiates "Reopen in Container"
 
-**File**: [devcontainer.json:11](devcontainer.json#L11)
+**File**: `.devcontainer/devcontainer.json`
 ```json
-"initializeCommand": "rm -rf /tmp/vscode-extensions-* || true"
+"initializeCommand": "bash .devcontainer/scripts/start-infra.sh && rm -rf /tmp/vscode-extensions-* || true"
 ```
 
 **Actions**:
@@ -72,55 +73,26 @@ All services communicate via Docker network (`frappe-network`):
 
 ---
 
-### Phase 1: Container Build
+### Phase 1: Container Image (Layered)
 
-**Trigger**: Docker Compose builds services
+**Trigger**: Docker Compose starts services and uses a prebuilt image
 
 **Files**:
-- [Dockerfile](Dockerfile) - Main dev container image
-- [docker-compose.yml](docker-compose.yml) - Service orchestration
+- `.devcontainer/docker-compose.yml` - Service orchestration (uses `frappe-bench:${USER}`)
+- [Dockerfile.layer2](../Dockerfile.layer2) - Layer 2 image definition (only used when building)
+- [build-layer2.sh](../build-layer2.sh) - Builds Layer 2 image
 
-#### Base Image Setup
+#### Layered Image Chain
 
-**FROM**: `ubuntu:22.04`
+`workbench-base:{user}` (Layer 0) → `devbench-base:{user}` (Layer 1a) → `frappe-bench:{user}` (Layer 2)
 
-**System Packages** ([Dockerfile:19-64](Dockerfile#L19-L64)):
-```
-build-essential, gcc, g++, make            # Build tools
-python3-dev, python3-pip, python3.10-venv  # Python
-libmariadb-dev, mariadb-client             # Database
-wkhtmltopdf                                # PDF generation
-git, curl, wget, jq                        # Utilities
-zsh, bash                                  # Shells
-```
+- Layer 0 + 1a are built once in `workBenches/` and reused across benches.
+- Layer 2 is built in this repo with `./build-layer2.sh --user <name>`.
+- The devcontainer does not install OS packages at runtime; it reuses the prebuilt image.
 
-**Node.js** ([Dockerfile:66-70](Dockerfile#L66-L70)):
-- Version: 20.x (from NodeSource)
-- Package manager: Yarn (global)
+#### User Setup
 
-**Python Packages** ([Dockerfile:88-104](Dockerfile#L88-L104)):
-```
-frappe-bench                               # Bench CLI
-redis, mysqlclient                         # Database clients
-black, flake8, isort, pylint               # Dev tools
-pytest, ipython                            # Testing/debugging
-```
-
-#### User Setup ([Dockerfile:110-121](Dockerfile#L110-L121))
-
-**Critical**: Container user matches host user (same UID/GID)
-
-```dockerfile
-ARG USER_UID=1000
-ARG USER_GID=1000
-RUN groupadd --gid $USER_GID frappe && \
-    useradd --uid $USER_UID --gid $USER_GID -m -s /bin/zsh frappe
-```
-
-**Why**:
-- Files created in container have correct ownership on host
-- No `sudo chown` needed
-- Seamless editing from host or container
+The container user matches host UID/GID and is baked into Layer 2 so file ownership stays correct across host and container.
 
 #### Service Containers
 
@@ -143,17 +115,14 @@ All services start in parallel:
 
 **Trigger**: Container created, services healthy
 
-**File**: [devcontainer.json:117-121](devcontainer.json#L117-L121)
+**File**: `.devcontainer/devcontainer.json`
 ```json
-"postCreateCommand": {
-  "env": "cp --update=none .devcontainer/.env.example .devcontainer/.env || true",
-  "setup": "bash .devcontainer/setup-frappe.sh"
-}
+"postCreateCommand": "cp --update=none .devcontainer/.env.example .devcontainer/.env || true && bash scripts/setup-frappe.sh && bash scripts/setup_stack.sh"
 ```
 
 #### Setup Script Flow
 
-**File**: [setup-frappe.sh](setup-frappe.sh)
+**File**: `scripts/setup-frappe.sh`
 
 ##### Step 1: Environment Loading ([setup-frappe.sh:8-23](setup-frappe.sh#L8-L23))
 
@@ -162,9 +131,9 @@ All services start in parallel:
 source <(grep -v '^#' .devcontainer/.env | grep -v '^UID=' | grep -v '^GID=')
 
 # Defaults
-FRAPPE_SITE_NAME=site1.localhost
+FRAPPE_SITE_NAME=${SITE_NAME}
 FRAPPE_BRANCH=version-15
-BENCH_DIR=/workspace/development/frappe-bench
+BENCH_DIR=/workspace/bench
 ```
 
 ##### Step 2: Bench Initialization ([setup-frappe.sh:88-101](setup-frappe.sh#L88-L101))
@@ -198,7 +167,7 @@ get_custom_apps() {
         for app_spec in "${APPS[@]}"; do
             # Parse: app:repo:branch or app:repo or just app
             bench get-app [--branch branch] repo
-            bench --site site1.localhost install-app app
+            bench --site ${SITE_NAME} install-app app
         done
     fi
 }
@@ -219,7 +188,7 @@ CUSTOM_APPS=dartwing:https://github.com/opensoft/dartwing-frappe:develop,erpnext
 ```bash
 ensure_site() {
     if [ ! -d "$BENCH_DIR/sites/$FRAPPE_SITE_NAME" ]; then
-        bench new-site site1.localhost \
+        bench new-site ${SITE_NAME} \
             --db-name site1 \
             --db-password frappe \
             --mariadb-root-password frappe \
@@ -316,7 +285,7 @@ your-app
 
 **Example** (`your-app.pth`):
 ```
-/workspace/development/frappe-bench/apps/your-app
+/workspace/bench/apps/your-app
 ```
 
 **How It Works**:
@@ -369,7 +338,7 @@ VSCode → Dev Containers: Rebuild Container
 **Method 2: Manual (Post-Build)**
 
 ```bash
-cd /workspace/development/frappe-bench
+cd /workspace/bench
 
 # Clone app
 bench get-app https://github.com/opensoft/dartwing-frappe
@@ -378,13 +347,13 @@ bench get-app https://github.com/opensoft/dartwing-frappe
 bench get-app --branch develop https://github.com/opensoft/dartwing-frappe
 
 # Install to site
-bench --site site1.localhost install-app dartwing
+bench --site ${SITE_NAME} install-app dartwing
 ```
 
 **Method 3: Direct Clone**
 
 ```bash
-cd /workspace/development/frappe-bench/apps
+cd /workspace/bench/apps
 
 # Clone directly
 git clone https://github.com/opensoft/dartwing-frappe dartwing
@@ -397,13 +366,13 @@ pip install -e apps/dartwing
 echo "dartwing" >> sites/apps.txt
 
 # Install to site
-bench --site site1.localhost install-app dartwing
+bench --site ${SITE_NAME} install-app dartwing
 ```
 
 ### Switching Branches
 
 ```bash
-cd /workspace/development/frappe-bench/apps/dartwing
+cd /workspace/bench/apps/dartwing
 
 # Switch branch
 git checkout main      # or develop, or feature/xyz
@@ -430,7 +399,7 @@ vim apps/dartwing/dartwing/api/v1.py
 # JS/CSS changes: bench build
 
 # Test changes
-curl http://localhost:8000/api/v1/test
+curl http://localhost:${HOST_PORT}/api/v1/test
 
 # Commit
 cd apps/dartwing
@@ -575,12 +544,13 @@ development/
 
 ### Environment Variables
 
-**File**: `.devcontainer/.env`
+**File**: `.devcontainer/.env` (inside each workspace)
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PROJECT_NAME` | `frappe` | Container name prefix |
-| `FRAPPE_SITE_NAME` | `site1.localhost` | Default site |
+| `SITE_NAME` | `${SITE_NAME}` | Default site |
+| `FRAPPE_SITE_NAME` | (optional) | Override site name |
 | `ADMIN_PASSWORD` | `admin` | Site admin password |
 | `DB_PASSWORD` | `frappe` | MariaDB root password |
 | `CUSTOM_APPS` | (empty) | Apps to auto-install |
@@ -589,14 +559,14 @@ development/
 
 ### Docker Compose Services
 
-**File**: `docker-compose.yml`
+**File**: `.devcontainer/docker-compose.yml`
 
-#### frappe-dev
-- **Image**: Custom (from Dockerfile)
+#### frappe-bench
+- **Image**: `frappe-bench:${USER}` (Layer 2)
 - **User**: Matches host UID/GID
 - **Command**: `sleep infinity` (kept alive)
 - **Volumes**: `../:/workspace:cached`
-- **Ports**: None (VSCode forwards)
+- **Ports**: `${HOST_PORT}:8000` (bench serve)
 
 #### mariadb
 - **Image**: `mariadb:10.6`
@@ -620,24 +590,24 @@ development/
 - **Volume**: `redis-socketio-data-{PROJECT_NAME}`
 
 #### workers (default, short, long)
-- **Image**: Same as frappe-dev
+- **Image**: Same as frappe-bench
 - **Command**: `bench worker --queue {name}`
 - **Resources**: 2GB memory, 1 CPU
 
 #### scheduler
-- **Image**: Same as frappe-dev
+- **Image**: Same as frappe-bench
 - **Command**: `bench schedule`
 - **Resources**: 2GB memory, 1 CPU
 
 #### socketio
-- **Image**: Same as frappe-dev
+- **Image**: Same as frappe-bench
 - **Command**: `node apps/frappe/socketio.js`
 - **Resources**: 1GB memory, 0.5 CPU
 
 #### nginx
 - **Image**: `nginx:alpine`
 - **Profile**: `production` (only starts with --profile flag)
-- **Port**: 8081:80
+- **Port**: `${NGINX_HOST_PORT}:80`
 
 ---
 
@@ -654,12 +624,12 @@ docker ps --filter "name=mariadb"
 docker logs frappe-mariadb
 
 # Check Redis
-docker exec frappe-dev redis-cli -h redis-cache ping
+docker compose -f .devcontainer/docker-compose.yml exec frappe redis-cli -h redis-cache ping
 
 # Manual bench init
-cd /workspace/development
-rm -rf frappe-bench
-bench init frappe-bench --frappe-branch version-15
+cd /workspace
+rm -rf bench
+bench init /workspace/bench --frappe-branch version-15
 ```
 
 ### App Import Fails
@@ -688,14 +658,14 @@ pip install -e apps/your-app
 **Debug**:
 ```bash
 # Check database connection
-bench --site site1.localhost mariadb
+bench --site ${SITE_NAME} mariadb
 # If connects, database is ok
 
 # Check app installed
-bench --site site1.localhost list-apps
+bench --site ${SITE_NAME} list-apps
 
 # Force migrate with patch
-bench --site site1.localhost migrate --skip-failing
+bench --site ${SITE_NAME} migrate --skip-failing
 ```
 
 ### Worker Not Processing Jobs
@@ -731,7 +701,7 @@ CONTAINER_CPUS=4     # Default: 2
 
 ### MariaDB Performance
 
-**Edit**: `docker-compose.yml`
+**Edit**: `.devcontainer/docker-compose.yml`
 ```yaml
 mariadb:
   command: >
@@ -743,7 +713,7 @@ mariadb:
 
 ### Redis Memory
 
-**Edit**: `docker-compose.yml`
+**Edit**: `.devcontainer/docker-compose.yml`
 ```yaml
 redis-cache:
   command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru
@@ -767,7 +737,7 @@ redis-cache:
 
 ### Port Exposure
 
-- Port 8081: Nginx (optional, production profile)
+- Port `${NGINX_HOST_PORT}`: Nginx (optional, production profile)
 - Ports 8081, 9000, 1455: Forwarded by VSCode (localhost only)
 - No ports directly exposed to network
 
