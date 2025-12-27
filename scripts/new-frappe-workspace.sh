@@ -132,7 +132,7 @@ cp -r "${GIT_ROOT}/devcontainer.example" "${NEW_DIR}/.devcontainer"
 log_success "Devcontainer template copied"
 
 # Calculate unique port based on NATO alphabet index for sequential assignment
-BASE_PORT=8201
+BASE_PORT=8001
 # Find the index of workspace name in NATO alphabet
 NATO_INDEX=-1
 for i in "${!NATO_ALPHABET[@]}"; do
@@ -148,7 +148,7 @@ if [ $NATO_INDEX -eq -1 ]; then
     PORT_OFFSET=$(echo -n "$WORKSPACE_NAME" | cksum | cut -d' ' -f1)
     HOST_PORT=$((BASE_PORT + (PORT_OFFSET % 50)))
 else
-    # Sequential port based on NATO index (alpha=8201, bravo=8202, etc.)
+    # Sequential port based on NATO index (alpha=8001, bravo=8002, etc.)
     HOST_PORT=$((BASE_PORT + NATO_INDEX))
 fi
 
