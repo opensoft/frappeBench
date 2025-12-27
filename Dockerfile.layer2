@@ -17,6 +17,10 @@ LABEL bench.type="frappe"
 ARG FRAPPE_BRANCH=version-15
 ARG FRAPPE_PYTHON_BIN=python3
 ARG FRAPPE_TEMPLATE_DIR=/opt/frappe-bench-template
+ARG ERPNEXT_REPO=https://github.com/frappe/erpnext
+ARG ERPNEXT_BRANCH=version-15
+ARG PAYMENTS_REPO=https://github.com/frappe/payments
+ARG PAYMENTS_BRANCH=version-15
 
 # Expose template location for runtime scripts
 ENV FRAPPE_TEMPLATE_DIR=${FRAPPE_TEMPLATE_DIR}
@@ -78,8 +82,12 @@ RUN bench init "${FRAPPE_TEMPLATE_DIR}" \
         --skip-redis-config-generation \
         --verbose \
     && cd "${FRAPPE_TEMPLATE_DIR}" \
+    && bench get-app --branch "${ERPNEXT_BRANCH}" "${ERPNEXT_REPO}" \
+    && bench get-app --branch "${PAYMENTS_BRANCH}" "${PAYMENTS_REPO}" \
     && bench setup requirements \
     && "${FRAPPE_TEMPLATE_DIR}/env/bin/pip" install -e apps/frappe \
+    && "${FRAPPE_TEMPLATE_DIR}/env/bin/pip" install -e apps/erpnext \
+    && "${FRAPPE_TEMPLATE_DIR}/env/bin/pip" install -e apps/payments \
     && touch "${FRAPPE_TEMPLATE_DIR}/.bench-requirements-ok"
 
 # Note: multitail already installed above for log viewing

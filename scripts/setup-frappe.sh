@@ -66,6 +66,23 @@ template_available() {
     [[ -d "$FRAPPE_TEMPLATE_DIR/env" && -d "$FRAPPE_TEMPLATE_DIR/apps/frappe" ]]
 }
 
+install_bench_apps() {
+    local apps_file="$BENCH_DIR/sites/apps.txt"
+    if [ ! -f "$apps_file" ]; then
+        return 0
+    fi
+
+    while read -r app; do
+        [ -z "$app" ] && continue
+        local app_path="$BENCH_DIR/apps/$app"
+        if [ -d "$app_path" ]; then
+            if [ -f "$app_path/pyproject.toml" ] || [ -f "$app_path/setup.py" ] || [ -f "$app_path/setup.cfg" ]; then
+                "$BENCH_DIR/env/bin/pip" install -e "$app_path"
+            fi
+        fi
+    done < "$apps_file"
+}
+
 seed_bench_from_template() {
     log "$BLUE" "[Template] Seeding bench from $FRAPPE_TEMPLATE_DIR..."
     rm -rf "$BENCH_DIR"
@@ -80,7 +97,7 @@ seed_bench_from_template() {
     find "$BENCH_DIR/env/bin/" -type f -exec sed -i "s|$FRAPPE_TEMPLATE_DIR|$BENCH_DIR|g" {} \;
     find "$BENCH_DIR/env/bin/" -type f -exec sed -i "s|#!/usr/bin/env python|#!/$BENCH_DIR/env/bin/python|g" {} \;
     patch_frappe_dateutil_requirement
-    cd "$BENCH_DIR/apps/frappe" && "$BENCH_DIR/env/bin/pip" install -e .
+    install_bench_apps
     touch "$BENCH_DIR/$BENCH_REQUIREMENTS_SENTINEL"
     log "$GREEN" "  ✓ Bench seeded from template."
 }
@@ -149,9 +166,9 @@ ensure_bench_ready() {
             bench setup requirements
             touch "$BENCH_DIR/$BENCH_REQUIREMENTS_SENTINEL"
         fi
-        # Ensure frappe is installed in the venv
+        # Ensure apps are installed in the venv
         patch_frappe_dateutil_requirement
-        cd "$BENCH_DIR/apps/frappe" && "$BENCH_DIR/env/bin/pip" install -e .
+        install_bench_apps
         export PATH="$BENCH_DIR/env/bin:$PATH"
     else
         if template_available && ! apps_dir_has_content; then
