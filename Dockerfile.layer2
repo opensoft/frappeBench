@@ -13,6 +13,14 @@ LABEL layer.version="2.0.0"
 LABEL layer.description="Frappe development and diagnostic tools"
 LABEL bench.type="frappe"
 
+# Template build args (for faster workspace bootstrap)
+ARG FRAPPE_BRANCH=version-15
+ARG FRAPPE_PYTHON_BIN=python3
+ARG FRAPPE_TEMPLATE_DIR=/opt/frappe-bench-template
+
+# Expose template location for runtime scripts
+ENV FRAPPE_TEMPLATE_DIR=${FRAPPE_TEMPLATE_DIR}
+
 # Switch to root for Frappe-specific package installation
 USER root
 
@@ -52,6 +60,28 @@ RUN pip3 install --break-system-packages \
     frappe-bench \
     && pip3 cache purge
 
+# ========================================
+# BENCH TEMPLATE (SPEED UP NEW WORKSPACES)
+# ========================================
+
+ARG USERNAME=brett
+
+# Prepare template location (owned by the bench user)
+RUN mkdir -p /opt && chown -R ${USERNAME}:${USERNAME} /opt
+
+USER ${USERNAME}
+
+# Build a ready-to-copy bench template
+RUN bench init "${FRAPPE_TEMPLATE_DIR}" \
+        --frappe-branch "${FRAPPE_BRANCH}" \
+        --python "${FRAPPE_PYTHON_BIN}" \
+        --skip-redis-config-generation \
+        --verbose \
+    && cd "${FRAPPE_TEMPLATE_DIR}" \
+    && bench setup requirements \
+    && "${FRAPPE_TEMPLATE_DIR}/env/bin/pip" install -e apps/frappe \
+    && touch "${FRAPPE_TEMPLATE_DIR}/.bench-requirements-ok"
+
 # Note: multitail already installed above for log viewing
 # tailspin skipped due to download issues - use multitail instead
 
@@ -59,7 +89,6 @@ RUN pip3 install --break-system-packages \
 # USER CONFIGURATION
 # ========================================
 
-ARG USERNAME=brett
 USER $USERNAME
 WORKDIR /workspace
 

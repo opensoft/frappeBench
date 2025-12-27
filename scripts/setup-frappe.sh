@@ -13,15 +13,18 @@ if [ -f .devcontainer/.env ]; then
     set +a
 fi
 
-FRAPPE_SITE_NAME=${FRAPPE_SITE_NAME:-site1.localhost}
+FRAPPE_SITE_NAME=${FRAPPE_SITE_NAME:-${SITE_NAME:-site1.localhost}}
 DB_NAME=${DB_NAME:-site1}
 ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
 DB_HOST=${DB_HOST:-mariadb}
 DB_PORT=${DB_PORT:-3306}
 DB_PASSWORD=${DB_PASSWORD:-frappe}
-BENCH_DIR=${BENCH_DIR:-/workspace/development/frappe-bench}
+BENCH_DIR=${BENCH_DIR:-${FRAPPE_BENCH_PATH:-/workspace/development/frappe-bench}}
 FRAPPE_BRANCH=${FRAPPE_BRANCH:-version-15}
 PYTHON_BIN=${PYTHON_BIN:-python3.10}
+FRAPPE_TEMPLATE_DIR=${FRAPPE_TEMPLATE_DIR:-/opt/frappe-bench-template}
+BENCH_REQUIREMENTS_SENTINEL=${BENCH_REQUIREMENTS_SENTINEL:-.bench-requirements-ok}
+BENCH_PARENT=$(dirname "$BENCH_DIR")
 
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -37,15 +40,42 @@ bench_is_initialized() {
     [[ -f "$BENCH_DIR/env/bin/python" && -d "$BENCH_DIR/apps/frappe" ]]
 }
 
+apps_dir_has_content() {
+    mountpoint -q "$BENCH_DIR/apps" || { [ -d "$BENCH_DIR/apps" ] && [ "$(ls -A "$BENCH_DIR/apps" 2>/dev/null)" != "" ]; }
+}
+
+template_available() {
+    [[ -d "$FRAPPE_TEMPLATE_DIR/env" && -d "$FRAPPE_TEMPLATE_DIR/apps/frappe" ]]
+}
+
+seed_bench_from_template() {
+    log "$BLUE" "[Template] Seeding bench from $FRAPPE_TEMPLATE_DIR..."
+    rm -rf "$BENCH_DIR"
+    mkdir -p "$BENCH_DIR"
+    (
+        cd "$FRAPPE_TEMPLATE_DIR"
+        tar -cf - .
+    ) | (
+        cd "$BENCH_DIR"
+        tar -xf -
+    )
+    find "$BENCH_DIR/env/bin/" -type f -exec sed -i "s|$FRAPPE_TEMPLATE_DIR|$BENCH_DIR|g" {} \;
+    find "$BENCH_DIR/env/bin/" -type f -exec sed -i "s|#!/usr/bin/env python|#!/$BENCH_DIR/env/bin/python|g" {} \;
+    cd "$BENCH_DIR/apps/frappe" && "$BENCH_DIR/env/bin/pip" install -e .
+    touch "$BENCH_DIR/$BENCH_REQUIREMENTS_SENTINEL"
+    log "$GREEN" "  ✓ Bench seeded from template."
+}
+
 rebuild_bench() {
     # Clean up any leftover temp benches from failed runs
-    rm -rf /workspace/development/tmp-bench-* || true
+    rm -rf "$BENCH_PARENT"/tmp-bench-* || true
     
-    if mountpoint -q "$BENCH_DIR/apps" || { [ -d "$BENCH_DIR/apps" ] && [ "$(ls -A "$BENCH_DIR/apps" 2>/dev/null)" != "" ]; }; then
+    if apps_dir_has_content; then
         log "$YELLOW" "⚠️  Apps directory present; performing non-destructive bench scaffold."
         local tmp_name
-        tmp_name=$(mktemp -u /workspace/development/tmp-bench-XXXX)
-        pushd /workspace/development >/dev/null
+        tmp_name=$(mktemp -u "$BENCH_PARENT/tmp-bench-XXXX")
+        mkdir -p "$BENCH_PARENT"
+        pushd "$BENCH_PARENT" >/dev/null
         bench init "$tmp_name" \
             --frappe-branch "$FRAPPE_BRANCH" \
             --python "$PYTHON_BIN" \
@@ -70,20 +100,22 @@ rebuild_bench() {
         find "$BENCH_DIR/env/bin/" -type f -exec sed -i "s|#!/usr/bin/env python|#!/$BENCH_DIR/env/bin/python|g" {} \;
         cd "$BENCH_DIR/apps/frappe" && "$BENCH_DIR/env/bin/pip" install -e .
         cd "$BENCH_DIR" && bench setup requirements
+        touch "$BENCH_DIR/$BENCH_REQUIREMENTS_SENTINEL"
         return
     fi
 
     log "$YELLOW" "⚠️  Rebuilding bench directory..."
     rm -rf "$BENCH_DIR"
-    mkdir -p /workspace/development
-    cd /workspace/development
-    bench init frappe-bench \
+    mkdir -p "$BENCH_PARENT"
+    cd "$BENCH_PARENT"
+    bench init "$BENCH_DIR" \
         --frappe-branch "$FRAPPE_BRANCH" \
         --python "$PYTHON_BIN" \
         --skip-redis-config-generation \
         --verbose
     cd "$BENCH_DIR"
     bench setup requirements
+    touch "$BENCH_DIR/$BENCH_REQUIREMENTS_SENTINEL"
     log "$GREEN" "  ✓ Bench initialization complete."
 }
 
@@ -92,12 +124,19 @@ ensure_bench_ready() {
     if bench_is_initialized; then
         log "$GREEN" "✅ Bench detected at $BENCH_DIR (keeping existing files)"
         cd "$BENCH_DIR"
-        bench setup requirements
+        if [ ! -f "$BENCH_DIR/$BENCH_REQUIREMENTS_SENTINEL" ]; then
+            bench setup requirements
+            touch "$BENCH_DIR/$BENCH_REQUIREMENTS_SENTINEL"
+        fi
         # Ensure frappe is installed in the venv
         cd "$BENCH_DIR/apps/frappe" && "$BENCH_DIR/env/bin/pip" install -e .
         export PATH="$BENCH_DIR/env/bin:$PATH"
     else
-        rebuild_bench
+        if template_available && ! apps_dir_has_content; then
+            seed_bench_from_template
+        else
+            rebuild_bench
+        fi
         export PATH="$BENCH_DIR/env/bin:$PATH"
     fi
 }
