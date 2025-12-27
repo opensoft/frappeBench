@@ -298,6 +298,22 @@ ensure_app_python_install() {
     fi
 }
 
+ensure_app_in_apps_txt() {
+    local app_name="$1"
+    local apps_txt="sites/apps.txt"
+
+    # Create apps.txt with frappe if it doesn't exist
+    if [ ! -f "$apps_txt" ]; then
+        echo "frappe" > "$apps_txt"
+    fi
+
+    # Add app to apps.txt if not already present
+    if ! grep -Fxq "$app_name" "$apps_txt"; then
+        echo "  Registering $app_name in apps.txt"
+        echo "$app_name" >> "$apps_txt"
+    fi
+}
+
 # --- Main Execution ---
 
 echo "Changing directory to the Frappe bench: $BENCH_DIR"
@@ -320,6 +336,7 @@ jq -c '.apps[]' "$STACK_FILE" | while read -r app; do
         echo "  App directory 'apps/$APP_NAME' already exists. Skipping 'bench get-app'."
         if [ "$APP_NAME" = "dartwing" ]; then
             ensure_dartwing_uv_deps
+            ensure_app_in_apps_txt "$APP_NAME"
         fi
         ensure_app_python_install "$APP_NAME"
     else
@@ -330,6 +347,7 @@ jq -c '.apps[]' "$STACK_FILE" | while read -r app; do
             clone_app_repo "$APP_REPO" "$APP_NAME" "$APP_BRANCH"
             ensure_dartwing_uv_deps
             ensure_app_python_install "$APP_NAME"
+            ensure_app_in_apps_txt "$APP_NAME"
         else
             if [ -n "$APP_BRANCH" ]; then
                 echo "  Branch: $APP_BRANCH"
