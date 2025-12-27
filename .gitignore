@@ -36,3 +36,7 @@ Thumbs.db
 # Environment
 .devcontainer/.env
 .devcontainer/docker-compose.mounts.yml
+
+# Workspaces (track the folder, ignore contents)
+workspaces/*
+!workspaces/.gitkeep
