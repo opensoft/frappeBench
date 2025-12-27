@@ -10,7 +10,6 @@
 set -e
 
 # --- Configuration ---
-BENCH_DIR="/workspace/development/frappe-bench"
 STACK_FILE="/workspace/.devcontainer/frappe-stack.json"
 
 # Load environment variables (excluding read-only vars)
@@ -21,6 +20,7 @@ if [ -f /workspace/.devcontainer/.env ]; then
     set +a
 fi
 
+BENCH_DIR=${BENCH_DIR:-${FRAPPE_BENCH_PATH:-/workspace/development/frappe-bench}}
 DB_HOST=${DB_HOST:-frappe-mariadb}
 DB_PORT=${DB_PORT:-3306}
 DB_ROOT_USER=${DB_ROOT_USER:-root}
@@ -159,7 +159,7 @@ site_schema_ready() {
 
 compute_site_db_name() {
     local site_name="$1"
-    python3 - <<'PY'
+    python3 - "$site_name" <<'PY'
 import hashlib
 import os
 import sys
@@ -238,18 +238,47 @@ if dep in text:
 lines = text.splitlines()
 out = []
 added = False
+in_deps = False
+
+def ensure_trailing_comma(lines_out):
+    for idx in range(len(lines_out) - 1, -1, -1):
+        candidate = lines_out[idx].strip()
+        if not candidate or candidate.startswith("#"):
+            continue
+        if not candidate.endswith(",") and candidate != "[":
+            lines_out[idx] = lines_out[idx].rstrip() + ","
+        break
+
 for line in lines:
+    stripped = line.strip()
+    if stripped.startswith("dependencies") and stripped.endswith("["):
+        in_deps = True
+        out.append(line)
+        continue
+
+    if in_deps:
+        if dep in stripped:
+            added = True
+        if stripped == "]":
+            if not added:
+                ensure_trailing_comma(out)
+                out.append(f'    "{dep}",')
+                added = True
+            out.append(line)
+            in_deps = False
+            continue
+        out.append(line)
+        continue
+
     out.append(line)
-    if line.strip().strip(",") == '"frappe"' and not added:
-        out.append(f'    "{dep}",')
-        added = True
 
 if not added:
-    for idx, line in enumerate(out):
-        if line.strip() == "]":
-            out.insert(idx, f'    "{dep}",')
-            added = True
-            break
+    # Fallback: append dependency block if missing
+    out.append("")
+    out.append("dependencies = [")
+    out.append(f'    "{dep}",')
+    out.append("]")
+    added = True
 
 if added:
     path.write_text("\n".join(out) + "\n")

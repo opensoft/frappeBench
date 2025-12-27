@@ -3,12 +3,12 @@
     {
       "name": "dartwing",
       "repo": "https://github.com/opensoft/frappe-app-dartwing",
-      "branch": "main"
+      "branch": "v16"
     },
     {
       "name": "erpnext",
       "repo": "https://github.com/frappe/erpnext",
-      "branch": "develop"
+      "branch": "version-16-beta"
     },
     {
       "name": "payments",
