@@ -54,6 +54,26 @@ patch_frappe_dateutil_requirement() {
     log "$GREEN" "  ✓ Patched python-dateutil requirement."
 }
 
+BENCH_BIN=""
+
+ensure_bench_bin() {
+    if [ -x "$BENCH_DIR/env/bin/bench" ]; then
+        BENCH_BIN="$BENCH_DIR/env/bin/bench"
+        return 0
+    fi
+    BENCH_BIN=$(type -P bench || true)
+    if [ -n "$BENCH_BIN" ]; then
+        return 0
+    fi
+    log "$YELLOW" "[Bench] bench CLI not found."
+    return 1
+}
+
+bench_cmd() {
+    ensure_bench_bin || return 1
+    "$BENCH_BIN" "$@"
+}
+
 bench_is_initialized() {
     [[ -f "$BENCH_DIR/env/bin/python" && -d "$BENCH_DIR/apps/frappe" ]]
 }
@@ -112,7 +132,7 @@ rebuild_bench() {
         tmp_name=$(mktemp -u "$BENCH_PARENT/tmp-bench-XXXX")
         mkdir -p "$BENCH_PARENT"
         pushd "$BENCH_PARENT" >/dev/null
-        bench init "$tmp_name" \
+        bench_cmd init "$tmp_name" \
             --frappe-branch "$FRAPPE_BRANCH" \
             --python "$PYTHON_BIN" \
             --skip-redis-config-generation \
@@ -136,7 +156,7 @@ rebuild_bench() {
         find "$BENCH_DIR/env/bin/" -type f -exec sed -i "s|#!/usr/bin/env python|#!/$BENCH_DIR/env/bin/python|g" {} \;
         patch_frappe_dateutil_requirement
         cd "$BENCH_DIR/apps/frappe" && "$BENCH_DIR/env/bin/pip" install -e .
-        cd "$BENCH_DIR" && bench setup requirements
+        cd "$BENCH_DIR" && bench_cmd setup requirements
         touch "$BENCH_DIR/$BENCH_REQUIREMENTS_SENTINEL"
         return
     fi
@@ -145,13 +165,13 @@ rebuild_bench() {
     rm -rf "$BENCH_DIR"
     mkdir -p "$BENCH_PARENT"
     cd "$BENCH_PARENT"
-    bench init "$BENCH_DIR" \
+    bench_cmd init "$BENCH_DIR" \
         --frappe-branch "$FRAPPE_BRANCH" \
         --python "$PYTHON_BIN" \
         --skip-redis-config-generation \
         --verbose
     cd "$BENCH_DIR"
-    bench setup requirements
+    bench_cmd setup requirements
     touch "$BENCH_DIR/$BENCH_REQUIREMENTS_SENTINEL"
     log "$GREEN" "  ✓ Bench initialization complete."
 }
@@ -163,7 +183,7 @@ ensure_bench_ready() {
         cd "$BENCH_DIR"
         if [ ! -f "$BENCH_DIR/$BENCH_REQUIREMENTS_SENTINEL" ]; then
             patch_frappe_dateutil_requirement
-            bench setup requirements
+            bench_cmd setup requirements
             touch "$BENCH_DIR/$BENCH_REQUIREMENTS_SENTINEL"
         fi
         # Ensure apps are installed in the venv
@@ -188,6 +208,7 @@ ensure_bench_cli() {
             log "$YELLOW" "[Bench] Failed to install bench into venv; falling back to global bench."
         fi
     fi
+    ensure_bench_bin
 }
 
 ensure_apps_txt() {
@@ -206,7 +227,7 @@ ensure_site() {
     cd "$BENCH_DIR" || exit 1
     if [ ! -d "$BENCH_DIR/sites/$FRAPPE_SITE_NAME" ]; then
         log "$BLUE" "[Site] Creating $FRAPPE_SITE_NAME..."
-        bench new-site "$FRAPPE_SITE_NAME" \
+        bench_cmd new-site "$FRAPPE_SITE_NAME" \
             --db-name "$DB_NAME" \
             --db-password "$DB_PASSWORD" \
             --mariadb-root-password "$DB_PASSWORD" \
@@ -261,7 +282,7 @@ PY
 set_default_site() {
     cd "$BENCH_DIR" || exit 1
     log "$BLUE" "[Site] Setting default site to $FRAPPE_SITE_NAME..."
-    bench use "$FRAPPE_SITE_NAME"
+    bench_cmd use "$FRAPPE_SITE_NAME"
     log "$GREEN" "  ✓ Default site set."
 }
 
@@ -270,7 +291,11 @@ validate_bench_start() {
     log_file=$(mktemp)
     log "$BLUE" "[Validate] Running bench start smoke test (20s timeout)..."
     set +e
-    timeout --signal=SIGINT --kill-after=5 20s bench start >"$log_file" 2>&1
+    if ! ensure_bench_bin; then
+        set -e
+        return 1
+    fi
+    timeout --signal=SIGINT --kill-after=5 20s "$BENCH_BIN" start >"$log_file" 2>&1
     local exit_code=$?
     set -e
     local failure=0
@@ -293,7 +318,7 @@ validate_bench_start() {
 set_default_site() {
     cd "$BENCH_DIR" || exit 1
     log "$BLUE" "[Site] Setting default site to $FRAPPE_SITE_NAME..."
-    bench use "$FRAPPE_SITE_NAME"
+    bench_cmd use "$FRAPPE_SITE_NAME"
     log "$GREEN" "  ✓ Default site set."
 }
 
@@ -314,14 +339,14 @@ get_custom_apps() {
                 fi
                 log "$BLUE" "[Apps] Getting $app_name from $repo_url"
                 if [ -n "$branch" ]; then
-                    bench get-app --branch "$branch" "$repo_url" || log "$YELLOW" "Failed to get $app_name"
+                    bench_cmd get-app --branch "$branch" "$repo_url" || log "$YELLOW" "Failed to get $app_name"
                 else
-                    bench get-app "$repo_url" || log "$YELLOW" "Failed to get $app_name"
+                    bench_cmd get-app "$repo_url" || log "$YELLOW" "Failed to get $app_name"
                 fi
                 # Install app to default site
                 if [ -d "$BENCH_DIR/apps/$app_name" ]; then
                     log "$BLUE" "[Apps] Installing $app_name to $FRAPPE_SITE_NAME"
-                    bench --site "$FRAPPE_SITE_NAME" install-app "$app_name" || log "$YELLOW" "Failed to install $app_name"
+                    bench_cmd --site "$FRAPPE_SITE_NAME" install-app "$app_name" || log "$YELLOW" "Failed to install $app_name"
                 fi
             else
                 # Just app name - get from Frappe marketplace
@@ -330,11 +355,11 @@ get_custom_apps() {
                     continue
                 fi
                 log "$BLUE" "[Apps] Getting $app_spec from Frappe marketplace"
-                bench get-app "$app_spec" || log "$YELLOW" "Failed to get $app_spec"
+                bench_cmd get-app "$app_spec" || log "$YELLOW" "Failed to get $app_spec"
                 # Install app to default site
                 if [ -d "$BENCH_DIR/apps/$app_spec" ]; then
                     log "$BLUE" "[Apps] Installing $app_spec to $FRAPPE_SITE_NAME"
-                    bench --site "$FRAPPE_SITE_NAME" install-app "$app_spec" || log "$YELLOW" "Failed to install $app_spec"
+                    bench_cmd --site "$FRAPPE_SITE_NAME" install-app "$app_spec" || log "$YELLOW" "Failed to install $app_spec"
                 fi
             fi
         done
