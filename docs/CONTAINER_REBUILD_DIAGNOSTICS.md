@@ -4,6 +4,8 @@
 
 This document provides a structured diagnostic framework for troubleshooting Frappe development container rebuild issues. It is designed to be machine-readable by AI assistants to systematically identify and resolve problems during the container initialization process.
 
+**Scope note**: Run host-side commands from a workspace root (e.g., `workspaces/alpha`). Inside the container, `/workspace` maps to that same workspace.
+
 ## Diagnostic Structure
 
 Each diagnostic section follows this format:
@@ -76,11 +78,8 @@ echo "DB_PASSWORD: ${DB_PASSWORD:-frappe}"
 ```bash
 # Check required files exist
 ls -la .devcontainer/
-ls -la frappe-apps.json
-ls -la frappe-apps.example.json
-
-# Validate JSON syntax
-python3 -m json.tool frappe-apps.json > /dev/null && echo "JSON valid" || echo "JSON invalid"
+ls -la .devcontainer/.env
+ls -la .devcontainer/docker-compose.yml
 
 # Check devcontainer configuration
 cat .devcontainer/devcontainer.json | python3 -c "import sys, json; json.load(sys.stdin); print('devcontainer.json valid')"
@@ -89,7 +88,7 @@ cat .devcontainer/devcontainer.json | python3 -c "import sys, json; json.load(sy
 **Expected Result**:
 
 - All required files present
-- JSON files parse without errors
+- .env and compose files present
 - devcontainer.json is valid JSON
 
 **Failure Symptoms**:
@@ -99,8 +98,8 @@ cat .devcontainer/devcontainer.json | python3 -c "import sys, json; json.load(sy
 
 **Resolution Steps**:
 
-1. Copy frappe-apps.example.json to frappe-apps.json
-2. Validate JSON syntax with online validator or python3 -m json.tool
+1. Ensure `.devcontainer/.env` exists (re-run `./scripts/new-frappe-workspace.sh <name>` if missing)
+2. Verify `.devcontainer/docker-compose.yml` exists
 3. Ensure devcontainer.json follows VS Code devcontainer specification
 
 **Priority**: Critical
@@ -147,45 +146,35 @@ docker compose exec redis-socketio redis-cli ping
 
 **Priority**: Critical
 
-### CHECK-004: Worktree Setup Validation
+### CHECK-004: Workspace Template Validation
 
-**Description**: Verify that git worktrees are created correctly during initializeCommand phase.
+**Description**: Verify that the workspace was created correctly and has the expected templates and scripts.
 
 **Command**:
 
 ```bash
-# Check worktree script execution
-/workspace/.devcontainer/setup-worktrees.sh
-
-# Verify worktrees exist
-ls -la /workspace
-git worktree list
-
-# Check worktree branches
-for worktree in $(git worktree list --porcelain | grep worktree | awk '{print $2}'); do
-  echo "Worktree: $worktree"
-  cd "$worktree" && git branch --show-current && cd /workspace
-done
+# From workspace root (host) or /workspace (container)
+ls -la .devcontainer/
+ls -la scripts/
+grep -E 'WORKSPACE_NAME|HOST_PORT|FRAPPE_BENCH_PATH' .devcontainer/.env
 ```
 
 **Expected Result**:
 
-- setup-worktrees.sh exits with code 0
-- Worktrees exist in expected locations
-- Each worktree is on correct branch
+- `.devcontainer/` exists with devcontainer.json and docker-compose.yml
+- `scripts/` exists and contains setup scripts
+- `.devcontainer/.env` includes workspace settings (HOST_PORT, WORKSPACE_NAME)
 
 **Failure Symptoms**:
 
-- "worktree already exists" errors
-- Missing worktree directories
-- Incorrect branch checkouts
+- Missing `.devcontainer` folder
+- `.env` missing or empty
+- Setup scripts not present
 
 **Resolution Steps**:
 
-1. Remove conflicting worktrees: `git worktree remove <path>`
-2. Check frappe-apps.json worktree configuration
-3. Verify branch names exist in remote repository
-4. Clean up .git/worktrees directory if corrupted
+1. Recreate the workspace: `./scripts/new-frappe-workspace.sh <name>`
+2. Re-run the update script: `./scripts/update-frappe-workspace.sh <name>`
 
 **Priority**: High
 
@@ -211,7 +200,7 @@ which python3
 pip list | grep frappe
 
 # Check site directories
-ls -la /workspace/development/frappe-bench/sites/
+ls -la /workspace/bench/sites/
 ```
 
 **Expected Result**:
@@ -232,7 +221,7 @@ ls -la /workspace/development/frappe-bench/sites/
 1. Reinstall bench: `pip install frappe-bench`
 2. Recreate virtual environment if corrupted
 3. Check PATH environment variable
-4. Verify site configuration in frappe-apps.json
+4. Verify site configuration in `.devcontainer/.env` (SITE_NAME/FRAPPE_SITE_NAME)
 
 **Priority**: Critical
 
@@ -244,7 +233,7 @@ ls -la /workspace/development/frappe-bench/sites/
 
 ```bash
 # Run site setup script
-/workspace/.devcontainer/setup-apps.sh
+/workspace/scripts/setup-frappe.sh
 
 # Check sites exist
 bench list-sites
@@ -261,8 +250,8 @@ done
 
 **Expected Result**:
 
-- setup-apps.sh exits successfully
-- Sites listed match frappe-apps.json
+- setup-frappe.sh exits successfully
+- Sites listed match `.devcontainer/.env`
 - Apps installed and linked to sites
 
 **Failure Symptoms**:
@@ -274,7 +263,7 @@ done
 **Resolution Steps**:
 
 1. Check MariaDB service status
-2. Verify site configuration in frappe-apps.json
+2. Verify site configuration in `.devcontainer/.env`
 3. Check app repository URLs and branches
 4. Clean up failed sites: `bench drop-site <site-name>`
 
@@ -335,10 +324,10 @@ timeout 10 bench start || echo "Bench start test completed"
 ls -la /workspace
 
 # Check frappe-bench permissions
-ls -la /workspace/development/frappe-bench/
+ls -la /workspace/bench/
 
 # Check site file permissions
-find /workspace/development/frappe-bench/sites/ -type f -exec ls -l {} \; | head -20
+find /workspace/bench/sites/ -type f -exec ls -l {} \; | head -20
 
 # Check user ID consistency
 id
@@ -362,7 +351,7 @@ echo "UID: $UID, GID: $GID"
 **Resolution Steps**:
 
 1. Fix ownership: `chown -R $UID:$GID /workspace`
-2. Set correct permissions: `chmod +x /workspace/.devcontainer/*.sh`
+2. Set correct permissions: `chmod +x /workspace/scripts/*.sh`
 3. Check docker-compose.yml user configuration
 4. Verify volume mount permissions
 
@@ -386,10 +375,10 @@ docker compose logs frappe 2>&1 | grep -i fail
 docker compose logs frappe 2>&1 | grep -i exception
 
 # Check initializeCommand logs
-docker compose logs frappe 2>&1 | grep -A 10 -B 5 "setup-worktrees"
+docker compose logs frappe 2>&1 | grep -A 10 -B 5 "start-infra"
 
 # Check postCreateCommand logs
-docker compose logs frappe 2>&1 | grep -A 10 -B 5 "setup-apps"
+docker compose logs frappe 2>&1 | grep -A 10 -B 5 "setup-frappe.sh"
 ```
 
 **Expected Result**:
@@ -486,8 +475,8 @@ echo ""
 # CHECK-002: Configuration Files
 echo "CHECK-002: Configuration File Validation"
 [ -f ".devcontainer/devcontainer.json" ] && echo "PASS: devcontainer.json exists" || echo "FAIL: devcontainer.json missing"
-[ -f "frappe-apps.json" ] && echo "PASS: frappe-apps.json exists" || echo "FAIL: frappe-apps.json missing"
-python3 -m json.tool frappe-apps.json > /dev/null 2>&1 && echo "PASS: frappe-apps.json valid JSON" || echo "FAIL: frappe-apps.json invalid JSON"
+[ -f ".devcontainer/.env" ] && echo "PASS: .env exists" || echo "FAIL: .env missing"
+[ -f ".devcontainer/docker-compose.yml" ] && echo "PASS: docker-compose.yml exists" || echo "FAIL: docker-compose.yml missing"
 echo ""
 
 # CHECK-003: Service Health
@@ -495,9 +484,9 @@ echo "CHECK-003: Docker Compose Service Health"
 docker compose ps --format json | jq -r '.[] | select(.State != "running") | "FAIL: Service \(.Name) not running"' || echo "PASS: All services running"
 echo ""
 
-# CHECK-004: Worktrees
-echo "CHECK-004: Worktree Setup"
-git worktree list | wc -l | xargs -I {} echo "Found {} worktrees"
+# CHECK-004: Workspace Template
+echo "CHECK-004: Workspace Template"
+grep -E 'WORKSPACE_NAME|HOST_PORT' .devcontainer/.env >/dev/null && echo "PASS: workspace env populated" || echo "FAIL: workspace env missing keys"
 echo ""
 
 # CHECK-005: Bench Environment
@@ -549,7 +538,7 @@ chmod +x /tmp/container-diagnostics.sh
 
 **Resolution Steps**:
 
-1. Run the extension troubleshooter: `bash .devcontainer/troubleshoot-extensions.sh`
+1. Run the extension troubleshooter: `bash scripts/troubleshoot-extensions.sh`
 2. Clean leftover temp directories: `rm -rf ~/.vscode-server/extensions/.*`
 3. Rebuild container if issues persist: `Ctrl+Shift+P → "Dev Containers: Rebuild Container"`
 4. Check VS Code extension logs for detailed error information
@@ -571,11 +560,11 @@ chmod +x /tmp/container-diagnostics.sh
 
 **Prevention**: Keep extensions updated to latest versions to avoid packaging issues.
 
-### Issue: Worktree Conflicts
+### Issue: Workspace Template Missing
 
-**Symptoms**: "fatal: '/path' is already a working tree"
-**Cause**: Previous worktree not cleaned up, concurrent builds
-**Solution**: Remove existing worktrees, check frappe-apps.json for duplicates
+**Symptoms**: `.devcontainer/` missing or empty
+**Cause**: Workspace not created or template copy failed
+**Solution**: Recreate the workspace with `./scripts/new-frappe-workspace.sh <name>`
 
 ### Issue: Database Connection Failures
 
@@ -603,9 +592,6 @@ chmod +x /tmp/container-diagnostics.sh
 # Stop all services
 docker compose down -v
 
-# Clean up worktrees
-git worktree list | awk '{print $1}' | xargs -I {} git worktree remove {} 2>/dev/null || true
-
 # Remove containers and volumes
 docker compose down -v --remove-orphans
 
@@ -626,37 +612,19 @@ docker compose exec frappe chown -R $UID:$GID /workspace
 docker compose restart
 
 # Re-run setup scripts
-docker compose exec frappe /workspace/.devcontainer/setup-worktrees.sh
-docker compose exec frappe /workspace/.devcontainer/setup-apps.sh
+docker compose exec frappe /workspace/scripts/setup-frappe.sh
+docker compose exec frappe /workspace/scripts/setup_stack.sh
 ```
 
 ## Configuration Reference
 
-### frappe-apps.json Structure
+### Workspace Environment Variables (.devcontainer/.env)
 
-```json
-{
-  "worktrees": [
-    {
-      "name": "frappe-app-dartwing",
-      "url": "https://github.com/opensoft/frappe-app-dartwing.git",
-      "branch": "develop",
-      "path": "development/frappe-bench/apps/frappe-app-dartwing"
-    }
-  ],
-  "sites": [
-    {
-      "name": "dev.dartwing.localhost",
-      "apps": ["frappe", "frappe-app-dartwing"],
-      "db_name": "dev_dartwing",
-      "admin_password": "admin"
-    }
-  ]
-}
-```
-
-### Environment Variables
-
+- `WORKSPACE_NAME`: Workspace identifier (alpha, bravo, etc.)
+- `HOST_PORT`: Host port mapped to container 8000
+- `NGINX_HOST_PORT`: Optional Nginx host port (production profile)
+- `SITE_NAME`: Default Frappe site name (e.g., alpha.localhost)
+- `FRAPPE_BENCH_PATH`: Bench path inside container (default: /workspace/bench)
 - `PROJECT_NAME`: Container naming prefix (default: frappe)
 - `DB_PASSWORD`: MariaDB root password (default: frappe)
 - `USER`: Host username for file ownership
