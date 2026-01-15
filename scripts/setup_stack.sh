@@ -55,6 +55,12 @@ if [ -d "${BENCH_DIR}/env/bin" ]; then
     export PATH="${BENCH_DIR}/env/bin:${PATH}"
 fi
 
+# Inherit wheel cache from setup-frappe.sh or use default location
+WHEEL_CACHE_DIR=${WHEEL_CACHE_DIR:-/tmp/pip-wheel-cache}
+if [ -d "$WHEEL_CACHE_DIR" ] && [ -z "${PIP_FIND_LINKS:-}" ]; then
+    export PIP_FIND_LINKS="$WHEEL_CACHE_DIR"
+fi
+
 # --- Helpers ---
 
 ensure_site_db_access() {

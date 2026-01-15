@@ -3,22 +3,22 @@
 ## Implementation Tasks
 
 ### 1. Add wheel cache function to setup-frappe.sh
-- [ ] Create `build_git_wheel_cache()` function
-- [ ] Define `WHEEL_CACHE_DIR` variable (default: `/tmp/pip-wheel-cache`)
-- [ ] Build gunicorn wheel using `pip wheel --no-deps`
-- [ ] Export `PIP_FIND_LINKS=$WHEEL_CACHE_DIR`
+- [x] Create `build_git_wheel_cache()` function
+- [x] Define `WHEEL_CACHE_DIR` variable (default: `/tmp/pip-wheel-cache`)
+- [x] Build gunicorn wheel using `pip wheel --no-deps`
+- [x] Export `PIP_FIND_LINKS=$WHEEL_CACHE_DIR`
 
 **Verification:** Function exists and exports environment variable
 
 ### 2. Call cache function early in setup flow
-- [ ] Call `build_git_wheel_cache()` after `ensure_bench_ready()` but before any pip installs
-- [ ] Ensure venv exists before building wheels
+- [x] Call `build_git_wheel_cache()` after `ensure_bench_ready()` but before any pip installs
+- [x] Ensure venv exists before building wheels
 
 **Verification:** Wheel cache directory contains `.whl` file after function runs
 
 ### 3. Verify cache inheritance in setup_stack.sh
-- [ ] Confirm `PIP_FIND_LINKS` is inherited from parent shell
-- [ ] Add fallback export if running standalone
+- [x] Confirm `PIP_FIND_LINKS` is inherited from parent shell
+- [x] Add fallback export if running standalone
 
 **Verification:** `echo $PIP_FIND_LINKS` shows cache path inside setup_stack.sh
 

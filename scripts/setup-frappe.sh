@@ -25,6 +25,7 @@ PYTHON_BIN=${PYTHON_BIN:-python3.10}
 FRAPPE_TEMPLATE_DIR=${FRAPPE_TEMPLATE_DIR:-/opt/frappe-bench-template}
 BENCH_REQUIREMENTS_SENTINEL=${BENCH_REQUIREMENTS_SENTINEL:-.bench-requirements-ok}
 BENCH_PARENT=$(dirname "$BENCH_DIR")
+WHEEL_CACHE_DIR=${WHEEL_CACHE_DIR:-/tmp/pip-wheel-cache}
 
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -52,6 +53,37 @@ patch_frappe_dateutil_requirement() {
     log "$BLUE" "[Patch] Relaxing frappe's python-dateutil constraint..."
     sed -i 's/"python-dateutil~=2.8.2"/"python-dateutil>=2.8.2,<3"/g' "$pyproject"
     log "$GREEN" "  ✓ Patched python-dateutil requirement."
+}
+
+# Build wheels for git-based dependencies to avoid redundant clones
+# The frappe/gunicorn fork is cloned multiple times during setup otherwise
+build_git_wheel_cache() {
+    if [ ! -d "$BENCH_DIR/env/bin" ]; then
+        log "$YELLOW" "[Wheel Cache] Skipping - venv not ready"
+        return 0
+    fi
+
+    # Skip if cache already populated
+    if [ -d "$WHEEL_CACHE_DIR" ] && ls "$WHEEL_CACHE_DIR"/*.whl >/dev/null 2>&1; then
+        log "$GREEN" "[Wheel Cache] Using existing cache at $WHEEL_CACHE_DIR"
+        export PIP_FIND_LINKS="$WHEEL_CACHE_DIR"
+        return 0
+    fi
+
+    log "$BLUE" "[Wheel Cache] Building git-based wheels..."
+    mkdir -p "$WHEEL_CACHE_DIR"
+
+    # Build gunicorn wheel from frappe fork
+    local gunicorn_url="git+https://github.com/frappe/gunicorn@bb554053bb87218120d76ab6676af7015680e8b6"
+    if "$BENCH_DIR/env/bin/pip" wheel --no-deps "$gunicorn_url" -w "$WHEEL_CACHE_DIR" 2>/dev/null; then
+        log "$GREEN" "  ✓ Built gunicorn wheel"
+    else
+        log "$YELLOW" "  ⚠ Failed to build gunicorn wheel (will use fallback)"
+    fi
+
+    # Export for all subsequent pip commands
+    export PIP_FIND_LINKS="$WHEEL_CACHE_DIR"
+    log "$GREEN" "[Wheel Cache] Cache ready at $WHEEL_CACHE_DIR"
 }
 
 BENCH_BIN=""
@@ -376,6 +408,7 @@ log "$BLUE" "🚀 Frappe Bench Setup starting..."
 echo "========================================"
 
 ensure_bench_ready
+build_git_wheel_cache
 ensure_bench_cli
 get_custom_apps
 ensure_apps_txt
