@@ -2,7 +2,7 @@
 set -e
 
 # Script metadata for version tracking
-SCRIPT_VERSION="1.0.0"
+SCRIPT_VERSION="1.1.0"
 SCRIPT_NAME="new-workspace.sh"
 
 # Source utility libraries
@@ -66,6 +66,36 @@ get_next_workspace_name() {
     fi
 }
 
+# Parse flags first
+SKIP_REBUILD=false
+POSITIONAL_ARGS=()
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --skip-rebuild)
+            SKIP_REBUILD=true
+            shift
+            ;;
+        --help|-h)
+            echo "Usage: $0 [workspace_name] [--skip-rebuild]"
+            echo ""
+            echo "Options:"
+            echo "  --skip-rebuild    Skip checking/rebuilding Docker image stack"
+            echo "  --help, -h        Show this help message"
+            echo ""
+            echo "If no workspace name is provided, the next NATO phonetic name is used."
+            exit 0
+            ;;
+        *)
+            POSITIONAL_ARGS+=("$1")
+            shift
+            ;;
+    esac
+done
+
+# Restore positional arguments
+set -- "${POSITIONAL_ARGS[@]}"
+
 # Initialize AI assistant (optional)
 init_ai_assistant
 
@@ -74,7 +104,7 @@ log_section "New Workspace Creator"
 detect_project_context || die "Failed to detect project context"
 display_project_context
 
-# Parse arguments
+# Parse workspace name from positional args
 WORKSPACE_NAME="${1:-}"
 
 # If no workspace name provided, auto-detect next one
@@ -101,8 +131,28 @@ echo ""
 # Validate AI before proceeding
 validate_workspace_operation "new" "$WORKSPACE_NAME" "$PROJECT_TYPE"
 
+# Step 0: Ensure Docker image stack is up to date
+if [ "$SKIP_REBUILD" = true ]; then
+    log_info "Skipping Docker image stack check (--skip-rebuild)"
+    echo ""
+else
+    log_subsection "[0/4] Checking Docker image stack..."
+    REBUILD_SCRIPT="${SCRIPT_DIR}/rebuild-stack.sh"
+    if [ -f "$REBUILD_SCRIPT" ]; then
+        # Run rebuild-stack.sh - it will only rebuild stale layers
+        if ! "$REBUILD_SCRIPT"; then
+            log_error "Failed to rebuild Docker image stack"
+            exit 1
+        fi
+    else
+        log_warn "rebuild-stack.sh not found at ${REBUILD_SCRIPT}"
+        log_warn "Skipping image stack check - workspace may use stale images"
+    fi
+    echo ""
+fi
+
 # Step 1: Create new workspace subdirectory
-log_subsection "[1/3] Creating new workspace directory..."
+log_subsection "[1/4] Creating new workspace directory..."
 if [ -d "$NEW_DIR" ]; then
     log_error "Directory ${NEW_DIR} already exists!"
     exit 1
@@ -114,7 +164,7 @@ log_success "Workspace directory created"
 echo ""
 
 # Link shared scripts into workspace
-log_subsection "[1.5/3] Linking shared scripts..."
+log_subsection "[1.5/4] Linking shared scripts..."
 for script in setup-frappe.sh setup_stack.sh; do
     ln -sf "/repo/scripts/${script}" "${NEW_DIR}/scripts/${script}"
 done
@@ -122,7 +172,7 @@ log_success "Script symlinks created"
 echo ""
 
 # Step 2: Copy devcontainer template
-log_subsection "[2/3] Setting up devcontainer configuration..."
+log_subsection "[2/4] Setting up devcontainer configuration..."
 if [ ! -d "${GIT_ROOT}/devcontainer.example" ]; then
     log_error "devcontainer.example folder not found!"
     exit 1
@@ -222,7 +272,7 @@ log_info "  Port: ${HOST_PORT}"
 echo ""
 
 # Step 3: Clone app repository (if configured)
-log_subsection "[3/3] Setting up app repository..."
+log_subsection "[3/4] Setting up app repository..."
 if [ -n "$APP_REPO" ]; then
     log_info "  Cloning from provided APP_REPO..."
     if git clone "$APP_REPO" "${NEW_DIR}/bench/apps/app"; then

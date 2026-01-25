@@ -2,7 +2,7 @@
 set -e
 
 # Script metadata for version tracking
-SCRIPT_VERSION="1.0.0"
+SCRIPT_VERSION="1.1.0"
 SCRIPT_NAME="update-workspace.sh"
 
 # Source utility libraries
@@ -11,6 +11,38 @@ source "${SCRIPT_DIR}/lib/common.sh"
 source "${SCRIPT_DIR}/lib/git-project.sh"
 source "${SCRIPT_DIR}/lib/ai-provider.sh"
 source "${SCRIPT_DIR}/lib/ai-assistant.sh"
+
+# Parse flags first
+SKIP_REBUILD=false
+POSITIONAL_ARGS=()
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --skip-rebuild)
+            SKIP_REBUILD=true
+            shift
+            ;;
+        --help|-h)
+            echo "Usage: $0 [workspace_name|-all] [--skip-rebuild]"
+            echo ""
+            echo "Arguments:"
+            echo "  workspace_name    Name of workspace to update (e.g., alpha, bravo)"
+            echo "  -all              Update all workspaces (default)"
+            echo ""
+            echo "Options:"
+            echo "  --skip-rebuild    Skip checking/rebuilding Docker image stack"
+            echo "  --help, -h        Show this help message"
+            exit 0
+            ;;
+        *)
+            POSITIONAL_ARGS+=("$1")
+            shift
+            ;;
+    esac
+done
+
+# Restore positional arguments
+set -- "${POSITIONAL_ARGS[@]}"
 
 # Initialize AI assistant (optional)
 init_ai_assistant
@@ -22,6 +54,26 @@ display_project_context
 
 # Parse arguments
 TARGET="${1:--all}"
+
+# Step 0: Ensure Docker image stack is up to date
+if [ "$SKIP_REBUILD" = true ]; then
+    log_info "Skipping Docker image stack check (--skip-rebuild)"
+    echo ""
+else
+    log_subsection "Checking Docker image stack..."
+    REBUILD_SCRIPT="${SCRIPT_DIR}/rebuild-stack.sh"
+    if [ -f "$REBUILD_SCRIPT" ]; then
+        # Run rebuild-stack.sh - it will only rebuild stale layers
+        if ! "$REBUILD_SCRIPT"; then
+            log_error "Failed to rebuild Docker image stack"
+            exit 1
+        fi
+    else
+        log_warn "rebuild-stack.sh not found at ${REBUILD_SCRIPT}"
+        log_warn "Skipping image stack check - workspace may use stale images"
+    fi
+    echo ""
+fi
 
 # Function to update a single workspace
 update_single_workspace() {

@@ -1,1 +1,0 @@
-/repo/scripts/setup_stack.sh
