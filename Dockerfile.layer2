@@ -3,13 +3,14 @@
 # Includes: Database clients, Nginx, Redis tools, Python debuggers
 # For polyglot stack: Python, Node, MariaDB, Redis, Nginx
 
-ARG BASE_IMAGE=devbench-base:brett
+ARG BASE_IMAGE=devbench-base:latest
 FROM ${BASE_IMAGE}
 
 # Container version labels
 LABEL layer="2"
 LABEL layer.name="frappe-bench"
-LABEL layer.version="2.0.0"
+LABEL layer.version="2.1.0"
+LABEL layer.updated="2026-03-07"
 LABEL layer.description="Frappe development and diagnostic tools"
 LABEL bench.type="frappe"
 
@@ -50,8 +51,21 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     netcat-openbsd \
     # Log viewing
     multitail \
+    # PDF generation (required for Frappe print formats)
+    wkhtmltopdf \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# ========================================
+# DOCKER CLI (daemon runs on host via mounted socket)
+# ========================================
+
+RUN curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-27.5.1.tgz \
+    | tar xz --strip-components=1 -C /usr/local/bin docker/docker \
+    && mkdir -p /usr/local/lib/docker/cli-plugins \
+    && curl -fsSL -o /usr/local/lib/docker/cli-plugins/docker-compose \
+       https://github.com/docker/compose/releases/download/v2.34.0/docker-compose-linux-x86_64 \
+    && chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
 
 # ========================================
 # PYTHON DIAGNOSTIC TOOLS
@@ -62,20 +76,23 @@ RUN pip3 install --break-system-packages \
     py-spy \
     web-pdb \
     frappe-bench \
+    ruff \
+    pre-commit \
+    coverage \
     && pip3 cache purge
 
 # ========================================
 # BENCH TEMPLATE (SPEED UP NEW WORKSPACES)
 # ========================================
 
-ARG USERNAME=brett
+# Create a temporary build user (bench refuses to run as root)
+RUN useradd -m -s /bin/bash _benchbuild
 
-# Prepare template location (owned by the bench user)
-RUN mkdir -p /opt && chown -R ${USERNAME}:${USERNAME} /opt
+# Prepare template location
+RUN mkdir -p /opt && chown _benchbuild:_benchbuild /opt
 
-USER ${USERNAME}
-
-# Build a ready-to-copy bench template
+# Build bench template as temporary user
+USER _benchbuild
 RUN bench init "${FRAPPE_TEMPLATE_DIR}" \
         --frappe-branch "${FRAPPE_BRANCH}" \
         --python "${FRAPPE_PYTHON_BIN}" \
@@ -93,20 +110,26 @@ RUN bench init "${FRAPPE_TEMPLATE_DIR}" \
 # Note: multitail already installed above for log viewing
 # tailspin skipped due to download issues - use multitail instead
 
+# Switch back to root for remaining config
+USER root
+
 # ========================================
-# USER CONFIGURATION
+# SHELL CONFIGURATION (into /etc/skel)
 # ========================================
 
-USER $USERNAME
-WORKDIR /workspace
+# Make template readable by all users and owned by root
+RUN chown -R root:root "${FRAPPE_TEMPLATE_DIR}" && chmod -R a+rX "${FRAPPE_TEMPLATE_DIR}"
 
-# Add Frappe diagnostic aliases to zshrc
-RUN echo '' >> ~/.zshrc && \
-    echo '# Frappe diagnostic aliases' >> ~/.zshrc && \
-    echo 'alias nginx-debug="nginx -t && tail -n 50 /var/log/nginx/error.log"' >> ~/.zshrc && \
-    echo 'alias frappe-doctor="bench doctor"' >> ~/.zshrc && \
-    echo 'alias redis-monitor="redis-cli monitor"' >> ~/.zshrc && \
-    echo 'alias check-workers="ps aux | grep -E \"(gunicorn|node|redis|bench)\""' >> ~/.zshrc
+# Clean up temporary build user
+RUN userdel -r _benchbuild 2>/dev/null || true
+
+# Add Frappe diagnostic aliases to /etc/skel/.zshrc
+RUN echo '' >> /etc/skel/.zshrc && \
+    echo '# Frappe diagnostic aliases' >> /etc/skel/.zshrc && \
+    echo 'alias nginx-debug="nginx -t && tail -n 50 /var/log/nginx/error.log"' >> /etc/skel/.zshrc && \
+    echo 'alias frappe-doctor="bench doctor"' >> /etc/skel/.zshrc && \
+    echo 'alias redis-monitor="redis-cli monitor"' >> /etc/skel/.zshrc && \
+    echo 'alias check-workers="ps aux | grep -E \"(gunicorn|node|redis|bench)\""' >> /etc/skel/.zshrc
 
 # Default command
 CMD ["sleep", "infinity"]

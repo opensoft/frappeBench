@@ -5,7 +5,7 @@
   "dockerComposeFile": ["docker-compose.yml", "docker-compose.override.yml"],
   "service": "frappe",
   "workspaceFolder": "/workspace",
-  "initializeCommand": "bash .devcontainer/scripts/start-infra.sh && rm -rf /tmp/vscode-extensions-* || true",
+"initializeCommand": "docker network create frappe-network 2>/dev/null || true && bash .devcontainer/scripts/start-infra.sh && rm -rf /tmp/vscode-extensions-* || true",
 
   "forwardPorts": [8081, 9000, 1455],
 
@@ -40,6 +40,8 @@
         "ms-python.vscode-pylance",
         "ms-python.black-formatter",
         "ms-python.isort",
+        "charliermarsh.ruff",
+        "Vue.volar",
         "redhat.vscode-yaml",
         "esbenp.prettier-vscode",
         "dbaeumer.vscode-eslint",
