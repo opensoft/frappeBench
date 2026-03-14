@@ -19,6 +19,9 @@ services:
       # (replaces individual dotfile mounts for shell, git, ssh, AI tools, etc.)
       - ~:/home/${USER:-frappe}:cached
 
+      # frappeBench root (for scripts, infrastructure, etc.)
+      - ..:/frappebench:cached
+
       # Project workspace at a stable path (used by scripts and workers)
       - ..:/workspace:cached
 

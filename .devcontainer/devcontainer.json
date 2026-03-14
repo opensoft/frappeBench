@@ -103,6 +103,6 @@
     "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "64000"
   },
 
-  "postCreateCommand": "cp --update=none .devcontainer/.env.example .devcontainer/.env || true && rm -rf /home/${localEnv:USER}/.vscode-server/extensions/.* 2>/dev/null || true && bash -c 'for dir in /home/${localEnv:USER}/.vscode-server/extensions/anthropic.claude-code-*/resources/; do [ -d \"$dir\" ] && cp .devcontainer/assets/claude-logo.svg \"$dir\" 2>/dev/null; done' || true && bash scripts/setup-frappe.sh && bash scripts/setup_stack.sh",
+  "postCreateCommand": "cp --update=none /frappebench/.devcontainer/.env.example /frappebench/.devcontainer/.env || true && rm -rf /home/${localEnv:USER}/.vscode-server/extensions/.* 2>/dev/null || true && bash -c 'for dir in /home/${localEnv:USER}/.vscode-server/extensions/anthropic.claude-code-*/resources/; do [ -d \"$dir\" ] && cp /frappebench/.devcontainer/assets/claude-logo.svg \"$dir\" 2>/dev/null; done' || true && bash /frappebench/scripts/setup-frappe.sh && bash /frappebench/scripts/setup_stack.sh",
   "postAttachCommand": "echo 'Connected to Frappe development environment'"
 }

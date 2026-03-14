@@ -40,7 +40,7 @@ if [ ! -d "sites/$SITE_NAME" ]; then
     bench new-site $SITE_NAME \
         --admin-password $ADMIN_PASSWORD \
         --db-root-password $DB_ROOT_PASSWORD \
-        --no-mariadb-socket
+        --mariadb-user-host-login-scope "%"
     echo -e "${GREEN}  ✓ Site created successfully${NC}"
 else
     echo -e "${GREEN}  ✓ Site already exists${NC}"

@@ -266,7 +266,7 @@ ensure_site() {
             --admin-password "$ADMIN_PASSWORD" \
             --db-host "$DB_HOST" \
             --db-port 3306 \
-            --no-mariadb-socket \
+            --mariadb-user-host-login-scope "%" \
             --force \
             --verbose
         log "$GREEN" "  ✓ Site created."

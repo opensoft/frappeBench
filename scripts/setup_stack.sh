@@ -10,13 +10,13 @@
 set -e
 
 # --- Configuration ---
-STACK_FILE="/workspace/.devcontainer/frappe-stack.json"
+STACK_FILE="/frappebench/.devcontainer/frappe-stack.json"
 
 # Load environment variables (excluding read-only vars)
-if [ -f /workspace/.devcontainer/.env ]; then
+if [ -f /frappebench/.devcontainer/.env ]; then
     set -a
     # Filter UID/GID so we don't clobber container user
-    source <(grep -v '^#' /workspace/.devcontainer/.env | grep -v '^UID=' | grep -v '^GID=')
+    source <(grep -v '^#' /frappebench/.devcontainer/.env | grep -v '^UID=' | grep -v '^GID=')
     set +a
 fi
 
@@ -395,7 +395,6 @@ jq -c '.sites[]' "$STACK_FILE" | while read -r site; do
                 --db-root-password "$DB_ROOT_PASSWORD" \
                 --db-host "$DB_HOST" \
                 --db-port "$DB_PORT" \
-                --no-mariadb-socket \
                 --mariadb-user-host-login-scope "%" \
                 --force
         fi
@@ -409,7 +408,6 @@ jq -c '.sites[]' "$STACK_FILE" | while read -r site; do
             --db-root-password "$DB_ROOT_PASSWORD" \
             --db-host "$DB_HOST" \
             --db-port "$DB_PORT" \
-            --no-mariadb-socket \
             --mariadb-user-host-login-scope "%" \
             --force
     fi

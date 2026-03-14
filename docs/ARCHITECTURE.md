@@ -194,7 +194,7 @@ ensure_site() {
             --mariadb-root-password frappe \
             --admin-password admin \
             --db-host mariadb \
-            --no-mariadb-socket
+            --mariadb-user-host-login-scope '%'
     fi
 }
 ```
