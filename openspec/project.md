@@ -18,7 +18,7 @@ frappeBench is a multi-workspace Frappe Framework development environment using 
 - **Reverse Proxy**: Nginx Alpine (production profile)
 - **Scripting**: Bash (automation scripts)
 - **Spec Management**: OpenSpec (spec-driven development)
-- **Base Images**: Custom layered images (workbench-base → devbench-base → frappe-bench)
+- **Base Images**: Custom layered images (`workbench-base:latest` → `dev-bench-base:latest` → `frappe-bench:latest` → `frappe-bench:${USER}`)
 
 ## Project Conventions
 
@@ -33,13 +33,15 @@ frappeBench is a multi-workspace Frappe Framework development environment using 
 
 ### Architecture Patterns
 
-**Three-Layer Docker Image Architecture:**
+**Four-Layer Docker Image Architecture:**
 ```
-Layer 0: workbench-base      (Ubuntu 24.04, git, vim, neovim, zoxide, fzf, bat)
+Layer 0: workbench-base:latest   (Ubuntu 24.04, git, vim, neovim, zoxide, fzf, bat)
     ↓
-Layer 1a: devbench-base      (Python 3, Node.js LTS, AI CLIs, dev tools)
+Layer 1a: dev-bench-base:latest  (Python 3, Node.js LTS, AI CLIs, dev tools)
     ↓
-Layer 2: frappe-bench        (MariaDB client, frappe-bench CLI, bench template)
+Layer 2: frappe-bench:latest     (MariaDB client, frappe-bench CLI, bench template)
+    ↓
+Layer 3: frappe-bench:${USER}    (host-matched user account for workspace use)
 ```
 
 **Shared Infrastructure Pattern:**
@@ -94,7 +96,7 @@ Layer 2: frappe-bench        (MariaDB client, frappe-bench CLI, bench template)
 
 **Technical Constraints:**
 - Maximum 26 concurrent workspaces (NATO alphabet limit)
-- Layer 2 image must be pre-built for fast startup (otherwise falls back to slow `bench init`)
+- Layer 2 image should be pre-built for fast startup, and Layer 3 is then created from it for the current user
 - All workspaces share single MariaDB instance (database isolation via site names)
 - Container memory defaults to 4GB (may need tuning for large sites)
 
@@ -111,7 +113,7 @@ Layer 2: frappe-bench        (MariaDB client, frappe-bench CLI, bench template)
 
 **Container Registries:**
 - Docker Hub: `mariadb:10.6`, `redis:alpine`, `nginx:alpine`
-- Custom Registry: `devbench-base:brett`, `frappe-bench:brett` (Layer 1a, Layer 2)
+- Local layered images: `dev-bench-base:latest`, `frappe-bench:latest`, `frappe-bench:${USER}`
 
 **Git Repositories:**
 - Frappe Framework: `https://github.com/frappe/frappe`

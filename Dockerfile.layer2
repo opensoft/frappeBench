@@ -1,9 +1,9 @@
 # Layer 2: Frappe Bench Image
-# Extends Layer 1a (devbench-base) with Frappe-specific tools
+# Extends Layer 1a (dev-bench-base) with Frappe-specific tools
 # Includes: Database clients, Nginx, Redis tools, Python debuggers
 # For polyglot stack: Python, Node, MariaDB, Redis, Nginx
 
-ARG BASE_IMAGE=devbench-base:latest
+ARG BASE_IMAGE=dev-bench-base:latest
 FROM ${BASE_IMAGE}
 
 # Container version labels
@@ -82,6 +82,20 @@ RUN pip3 install --break-system-packages \
     && pip3 cache purge
 
 # ========================================
+# NODE.JS VERSION PIN (Frappe requires Node 18 or 20)
+# ========================================
+# The base image has Node.js LTS (currently v24) but Frappe only supports 18/20.
+# Must remove the existing nodesource repo first, then add the v20 repo.
+RUN rm -f /etc/apt/sources.list.d/nodesource.list \
+    && rm -f /etc/apt/keyrings/nodesource.gpg \
+    && apt-get update && apt-get remove -y nodejs || true \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && apt-get clean && rm -rf /var/lib/apt/lists/* \
+    && node --version | grep -q '^v20' && echo "✓ Node.js $(node --version) pinned for Frappe" \
+    || { echo "✗ Expected Node.js v20, got $(node --version)"; exit 1; }
+
+# ========================================
 # BENCH TEMPLATE (SPEED UP NEW WORKSPACES)
 # ========================================
 
@@ -93,7 +107,8 @@ RUN mkdir -p /opt && chown _benchbuild:_benchbuild /opt
 
 # Build bench template as temporary user
 USER _benchbuild
-RUN bench init "${FRAPPE_TEMPLATE_DIR}" \
+ENV COREPACK_HOME=/tmp/corepack
+RUN mkdir -p /tmp/corepack && bench init "${FRAPPE_TEMPLATE_DIR}" \
         --frappe-branch "${FRAPPE_BRANCH}" \
         --python "${FRAPPE_PYTHON_BIN}" \
         --skip-redis-config-generation \

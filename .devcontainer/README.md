@@ -10,7 +10,7 @@ This devcontainer now uses the **layered image approach** instead of the old mon
 
 ### What Changed:
 
-- ✅ **Now uses:** `image: frappe-bench:brett` (pre-built layered image)
+- ✅ **Now uses:** `image: frappe-bench:${USER}` (Layer 3 user image built from `frappe-bench:latest`)
 - ❌ **Old way:** `build: Dockerfile` (monolithic build from scratch)
 
 ### Benefits:
@@ -21,10 +21,10 @@ This devcontainer now uses the **layered image approach** instead of the old mon
 
 ## Requirements
 
-You must have the layered image built first:
+VS Code now ensures the Layer 3 user image exists automatically. To prebuild it yourself:
 
 ```bash
-# Build Layer 2 (if not already built)
+# Build Layer 2 + Layer 3 (if not already built)
 cd /home/brett/projects/workBenches/devBenches/frappeBench
 ./build-layer.sh --user $(whoami)
 ```
@@ -34,7 +34,7 @@ cd /home/brett/projects/workBenches/devBenches/frappeBench
 ### Open in VSCode:
 1. Open frappeBench folder in VSCode
 2. Click "Reopen in Container" when prompted
-3. Container starts instantly using `frappe-bench:brett` image
+3. Container starts instantly using your `frappe-bench:${USER}` image
 
 ### Manual Start:
 ```bash
@@ -44,7 +44,7 @@ docker compose up -d
 
 ## Container Details
 
-- **Image:** `frappe-bench:brett`
+- **Image:** `frappe-bench:${USER}` (built from `frappe-bench:latest`)
 - **Container name:** `frappebench-root-bench`
 - **Workspace:** Mounts frappeBench root to `/workspace`
 - **Network:** Connects to `frappe-network`

@@ -78,21 +78,23 @@ All services communicate via Docker network (`frappe-network`):
 **Trigger**: Docker Compose starts services and uses a prebuilt image
 
 **Files**:
-- `.devcontainer/docker-compose.yml` - Service orchestration (uses `frappe-bench:${USER}`)
-- [Dockerfile.layer2](../Dockerfile.layer2) - Layer 2 image definition (only used when building)
+- `.devcontainer/docker-compose.yml` - Service orchestration (uses `frappe-bench:${USER}` Layer 3 image)
+- [Dockerfile.layer2](../Dockerfile.layer2) - Layer 2 image definition (`frappe-bench:latest`)
 - [build-layer2.sh](../build-layer2.sh) - Builds Layer 2 image
+- [build-layer.sh](../build-layer.sh) - Builds Layer 2 then Layer 3 for the current user
 
 #### Layered Image Chain
 
-`workbench-base:{user}` (Layer 0) → `devbench-base:{user}` (Layer 1a) → `frappe-bench:{user}` (Layer 2)
+`workbench-base:latest` (Layer 0) → `dev-bench-base:latest` (Layer 1a) → `frappe-bench:latest` (Layer 2) → `frappe-bench:${USER}` (Layer 3)
 
-- Layer 0 + 1a are built once in `workBenches/` and reused across benches.
-- Layer 2 is built in this repo with `./build-layer2.sh --user <name>`.
-- The devcontainer does not install OS packages at runtime; it reuses the prebuilt image.
+- Layers 0 and 1a are built once in `workBenches/` and reused across benches.
+- Layer 2 is built in this repo with `./build-layer2.sh`.
+- Layer 3 is created with `./build-layer.sh --user <name>` or `scripts/ensure-layer3.sh --base frappe-bench:latest --user <name>`.
+- The devcontainer does not install OS packages at runtime; it reuses the prebuilt Layer 3 image.
 
 #### User Setup
 
-The container user matches host UID/GID and is baked into Layer 2 so file ownership stays correct across host and container.
+The container user matches the host UID/GID, but that user account is created in Layer 3, not Layer 2. Layer 2 stays user-agnostic so it can be shared across all developers.
 
 #### Service Containers
 

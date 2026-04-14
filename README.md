@@ -102,19 +102,24 @@ bench clear-cache
 
 frappeBench uses the workBenches multi-layer architecture:
 
-**Layer 0** (`workbench-base:brett`) - System base from [workBenches](../../CONTAINER-ARCHITECTURE.md#layer-0-system-base-workbench-base)
+**Layer 0** (`workbench-base:latest`) - System base from [workBenches](../../docs/CONTAINER-ARCHITECTURE.md)
 - Ubuntu 24.04, git, editors (vim, neovim), modern CLI tools (zoxide, fzf, bat)
 
-**Layer 1a** (`devbench-base:brett`) - Development tools from [workBenches](../../CONTAINER-ARCHITECTURE.md#layer-1a-development-base-devbench-base)
+**Layer 1a** (`dev-bench-base:latest`) - Development tools from [workBenches](../../docs/CONTAINER-ARCHITECTURE.md)
 - Python 3, Node.js LTS, AI CLIs (Claude, Copilot, Gemini, OpenCode, Letta)
 - Python dev tools (black, flake8, pytest, ipython)
 
-**Layer 2** (`frappe-bench:brett`) - Frappe-specific tools (this bench)
+**Layer 2** (`frappe-bench:latest`) - Frappe-specific tools (this bench)
 - MariaDB client, Nginx, Redis tools
 - Python profiling (py-spy, web-pdb)
 - Network diagnostics (dig, nc)
 - Log viewing (multitail)
 - Frappe diagnostic aliases
+
+**Layer 3** (`frappe-bench:${USER}`) - User image built from Layer 2
+- Creates the host-matched user account and home directory
+- Copies shell configuration from `/etc/skel`
+- Built automatically by `ensure-layer3.sh` from the devcontainer initialize step
 
 ### Service Architecture
 

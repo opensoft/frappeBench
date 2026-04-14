@@ -8,7 +8,7 @@ This is the template for creating Frappe development workspaces with devcontaine
 
 When a new workspace is created, the contents of this folder are copied to `workspaces/<workspace-name>/.devcontainer/`.
 
-This template uses the layered workBenches images (`workbench-base` → `devbench-base` → `frappe-bench`). Build Layer 2 with `../build-layer2.sh --user <name>` if needed.
+This template uses the layered workBenches images (`workbench-base:latest` → `dev-bench-base:latest` → `frappe-bench:latest` → `frappe-bench:${USER}`). Build Layer 2 and Layer 3 with `../build-layer.sh --user <name>` if needed.
 
 ## Files
 

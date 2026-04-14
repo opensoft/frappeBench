@@ -5,7 +5,7 @@
   "dockerComposeFile": ["docker-compose.yml", "docker-compose.override.yml"],
   "service": "frappe",
   "workspaceFolder": "/workspace",
-  "initializeCommand": "bash .devcontainer/scripts/start-infra.sh && rm -rf /tmp/vscode-extensions-* || true",
+  "initializeCommand": "bash ${localWorkspaceFolder}/../../../../scripts/ensure-layer3.sh --base frappe-bench:latest --user ${localEnv:USER} && bash .devcontainer/scripts/start-infra.sh && rm -rf /tmp/vscode-extensions-* || true",
 
   "forwardPorts": [8081, 9000, 1455],
 
@@ -91,6 +91,7 @@
   // for AI tool configs, shell configs, SSH keys, etc.
 
   "remoteUser": "${localEnv:USER}",
+  "updateRemoteUserUID": false,
 
   "containerEnv": {
     "SHELL": "/bin/zsh",

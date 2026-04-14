@@ -1,5 +1,5 @@
 # frappeBench root devcontainer stack
-name: ${COMPOSE_PROJECT_NAME:-frappebench-root}
+name: ${COMPOSE_PROJECT_NAME:-dev-benches}
 
 services:
   # Main Frappe Web Container - Development environment

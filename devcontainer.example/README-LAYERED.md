@@ -4,9 +4,10 @@ This workspace template uses the **layered workBench architecture** with pre-bui
 
 ## Layered Architecture
 
-- **Layer 0** (`workbench-base:brett`): System + modern CLI tools (zsh, tmux, fzf, bat, zoxide, tldr, neovim)
-- **Layer 1a** (`devbench-base:brett`): Python dev (black, pytest, ipython, uv) + Node.js + AI CLIs  
-- **Layer 2** (`frappe-bench:brett`): Frappe tools (bench, MariaDB, Nginx, Redis, py-spy, web-pdb)
+- **Layer 0** (`workbench-base:latest`): System + modern CLI tools (zsh, tmux, fzf, bat, zoxide, tldr, neovim)
+- **Layer 1a** (`dev-bench-base:latest`): Python dev (black, pytest, ipython, uv) + Node.js + AI CLIs
+- **Layer 2** (`frappe-bench:latest`): Frappe tools (bench, MariaDB, Nginx, Redis, py-spy, web-pdb)
+- **Layer 3** (`frappe-bench:${USER}`): User image built from Layer 2 for workspace use
 
 **Benefits:**
 - ✅ < 10 second workspace startup (no build)
@@ -52,10 +53,10 @@ code .  # Reopen in Container
 ## Troubleshooting
 
 ### Image Not Found
-Build Layer 2:
+Build Layer 2 and Layer 3:
 ```bash
 cd /path/to/workBenches/devBenches/frappeBench
-./build-layer2.sh --user brett
+./build-layer.sh --user $(whoami)
 ```
 
 ### Nginx 502 Gateway Errors
@@ -81,13 +82,15 @@ bench doctor                          # Full health check
 ## Architecture
 
 ```
-Workspace (frappe-bench:brett)
+Workspace (frappe-bench:${USER})
     ↓
-frappe-bench:brett (Layer 2)
+frappe-bench:${USER} (Layer 3)
+    ↓ built from
+frappe-bench:latest (Layer 2)
     ↓ extends
-devbench-base:brett (Layer 1a)
+dev-bench-base:latest (Layer 1a)
     ↓ extends  
-workbench-base:brett (Layer 0)
+workbench-base:latest (Layer 0)
 ```
 
 Shared services: MariaDB, Redis (cache/queue/socketio)

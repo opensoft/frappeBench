@@ -173,10 +173,10 @@ bench --site ${SITE_NAME} run-tests --app your-app
 - Cleans up temporary extension files
 
 ### Phase 2: Container Start (Layered Images)
-- Uses prebuilt layered image `frappe-bench:${USER}` (Layer 2)
-- Layer chain: `workbench-base` → `devbench-base` → `frappe-bench`
+- Uses prebuilt layered image `frappe-bench:${USER}` (Layer 3)
+- Layer chain: `workbench-base:latest` → `dev-bench-base:latest` → `frappe-bench:latest` → `frappe-bench:${USER}`
 - No monolithic package installs during devcontainer startup
-- Build Layer 2 when needed: `./build-layer2.sh --user <name>`
+- Build Layer 2 and Layer 3 when needed: `./build-layer.sh --user <name>`
 - Starts service containers (MariaDB, Redis, etc.)
 
 ### Phase 3: postCreateCommand (Container)

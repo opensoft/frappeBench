@@ -13,6 +13,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FRAPPE_BENCH_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 DEV_BENCHES_DIR="$(cd "${FRAPPE_BENCH_DIR}/.." && pwd)"
 WORKBENCHES_DIR="$(cd "${DEV_BENCHES_DIR}/.." && pwd)"
+source "${WORKBENCHES_DIR}/scripts/lib/image-names.sh"
 
 # Colors
 RED='\033[0;31m'
@@ -47,8 +48,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Image names
-LAYER0_IMAGE="workbench-base:${USERNAME}"
-LAYER1A_IMAGE="devbench-base:${USERNAME}"
+LAYER0_IMAGE="workbench-base:latest"
+LAYER1A_IMAGE="$(resolve_family_base_image dev "$USERNAME" || family_base_image dev)"
 LAYER2_IMAGE="frappe-bench:${USERNAME}"
 
 # Build script locations
@@ -197,7 +198,7 @@ if $REBUILD_LAYER0; then
 fi
 
 if $REBUILD_LAYER1A; then
-    log_section "Building Layer 1a: devbench-base"
+    log_section "Building Layer 1a: $(family_base_repo dev)"
     if [ ! -f "$LAYER1A_BUILD" ]; then
         log_error "Build script not found: ${LAYER1A_BUILD}"
         exit 1

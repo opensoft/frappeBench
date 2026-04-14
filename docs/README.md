@@ -32,7 +32,7 @@ Open `workspaces/alpha/` in VSCode and click "Reopen in Container" when prompted
 
 ### 3. Verify Setup
 The devcontainer will automatically:
-- Use the prebuilt layered image (`frappe-bench:${USER}`); build it with `./build-layer2.sh --user <name>` if needed
+- Use the prebuilt layered image (`frappe-bench:${USER}`) built from `frappe-bench:latest`; build it with `./build-layer.sh --user <name>` if needed
 - Initialize Frappe bench (first time only, 5-10 minutes)
 - Create site at `${SITE_NAME}` (from `.devcontainer/.env`)
 - Configure Redis connections
@@ -275,8 +275,8 @@ docker compose -f .devcontainer/docker-compose.yml --profile production up -d
 ## Version Information
 
 - **Frappe**: Version 15 (version-15 branch)
-- **Python**: 3.x (from devbench-base)
-- **Node.js**: 20.x (from devbench-base)
+- **Python**: 3.x (from dev-bench-base)
+- **Node.js**: 20.x (from dev-bench-base)
 - **MariaDB**: 10.6
 - **Redis**: Alpine (latest)
 - **Bench**: `frappe-bench` (from Layer 2 image)
@@ -285,6 +285,7 @@ docker compose -f .devcontainer/docker-compose.yml --profile production up -d
 
 - `Dockerfile.layer2`: Layer 2 image definition
 - `build-layer2.sh`: Layer 2 image build script
+- `build-layer.sh`: Layer 2 + Layer 3 wrapper for user-ready images
 - `devcontainer.example/docker-compose.yml`: Template (copied into workspaces)
 - `devcontainer.example/devcontainer.json`: Template (copied into workspaces)
 - `scripts/setup-frappe.sh`: Automated bench initialization script
