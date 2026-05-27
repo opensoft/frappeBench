@@ -1,5 +1,5 @@
 # Shared infrastructure stack (MariaDB + Redis) for all Frappe workspaces
-name: frappe-infra
+name: frappe
 
 services:
   # MariaDB Database (shared)

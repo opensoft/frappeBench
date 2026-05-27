@@ -24,6 +24,24 @@ else
     exit 1
 fi
 
+INFRA_COMPOSE_PROJECT_NAME="${FRAPPE_INFRA_COMPOSE_PROJECT:-frappe}"
+LEGACY_INFRA_COMPOSE_PROJECT_NAME="frappe-infra"
+INFRA_CONTAINERS=(frappe-mariadb frappe-redis-cache frappe-redis-queue frappe-redis-socketio)
+
+container_compose_project() {
+    docker inspect -f '{{ index .Config.Labels "com.docker.compose.project" }}' "$1" 2>/dev/null || true
+}
+
+remove_legacy_infra_containers() {
+    local container project
+    for container in "${INFRA_CONTAINERS[@]}"; do
+        project="$(container_compose_project "$container")"
+        if [ "$project" = "$LEGACY_INFRA_COMPOSE_PROJECT_NAME" ]; then
+            docker rm -f "$container" >/dev/null 2>&1 || true
+        fi
+    done
+}
+
 if ! docker network inspect frappe-network >/dev/null 2>&1; then
     docker network create frappe-network >/dev/null
 fi
@@ -54,13 +72,19 @@ if [ "${INFRA_DEBUG}" = "1" ]; then
     echo "db_password_set=$([ -n "${DB_PASSWORD}" ] && echo yes || echo no)"
 fi
 
+remove_legacy_infra_containers
+
 infra_running=true
-for container in frappe-mariadb frappe-redis-cache frappe-redis-queue frappe-redis-socketio; do
+for container in "${INFRA_CONTAINERS[@]}"; do
     if ! docker ps -q -f "name=^${container}$" >/dev/null 2>&1; then
         infra_running=false
         break
     fi
     if [ -z "$(docker ps -q -f "name=^${container}$")" ]; then
+        infra_running=false
+        break
+    fi
+    if [ "$(container_compose_project "$container")" != "$INFRA_COMPOSE_PROJECT_NAME" ]; then
         infra_running=false
         break
     fi
@@ -74,8 +98,8 @@ fi
 (
     cd "${INFRA_DIR}"
     if [ -n "$DB_PASSWORD" ]; then
-        COMPOSE_PROJECT_NAME=frappe-infra DB_PASSWORD="$DB_PASSWORD" ${COMPOSE[@]} up -d
+        COMPOSE_PROJECT_NAME="$INFRA_COMPOSE_PROJECT_NAME" DB_PASSWORD="$DB_PASSWORD" ${COMPOSE[@]} up -d
     else
-        COMPOSE_PROJECT_NAME=frappe-infra ${COMPOSE[@]} up -d
+        COMPOSE_PROJECT_NAME="$INFRA_COMPOSE_PROJECT_NAME" ${COMPOSE[@]} up -d
     fi
 )

@@ -5,7 +5,7 @@
   "dockerComposeFile": ["docker-compose.yml", "docker-compose.override.yml"],
   "service": "frappe",
   "workspaceFolder": "/workspace",
-"initializeCommand": "bash ${localWorkspaceFolder}/../../scripts/ensure-layer3.sh --base frappe-bench:latest --user ${localEnv:USER} && docker rm -f frappebench-root-bench frappe-nginx frappe-worker-default frappe-worker-short frappe-worker-long frappe-scheduler frappe-socketio 2>/dev/null || true && docker network create frappe-network 2>/dev/null || true && bash .devcontainer/scripts/start-infra.sh && rm -rf /tmp/vscode-extensions-* || true",
+"initializeCommand": "bash ${localWorkspaceFolder}/../../scripts/ensure-sonarqube-mcp.sh && bash ${localWorkspaceFolder}/../../scripts/ensure-layer3.sh --base frappe-bench:latest --user ${localEnv:USER} && docker rm -f frappebench-root-bench frappebench-root-nginx frappebench-root-worker-default frappebench-root-worker-short frappebench-root-worker-long frappebench-root-scheduler frappebench-root-socketio frappe-nginx frappe-worker-default frappe-worker-short frappe-worker-long frappe-scheduler frappe-socketio 2>/dev/null || true && docker network create frappe-network 2>/dev/null || true && bash .devcontainer/scripts/start-infra.sh && rm -rf /tmp/vscode-extensions-* || true",
 
   "forwardPorts": [8081, 9000, 1455],
 

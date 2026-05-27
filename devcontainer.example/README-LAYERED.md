@@ -97,7 +97,7 @@ Shared services: MariaDB, Redis (cache/queue/socketio)
 
 ## Shared Infrastructure Stack
 
-Database and Redis are now shared across all workspaces via the **frappe-infra** stack.
+Database and Redis are now shared across all workspaces via the **frappe** infra stack.
 
 Start it once:
 

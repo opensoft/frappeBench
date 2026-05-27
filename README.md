@@ -69,7 +69,9 @@ A complete Frappe development environment with devcontainer support for VSCode, 
 - isort (import organizer)
 - flake8 (linter)
 - pytest (testing)
+- pytest-cov and coverage (Python coverage)
 - ipython (interactive shell)
+- nyc (JavaScript/TypeScript LCOV coverage)
 
 ### Bench Commands
 ```bash
@@ -88,6 +90,25 @@ bench --site ${SITE_NAME} mariadb
 # Clear cache
 bench clear-cache
 ```
+
+### SonarCloud JavaScript/TypeScript Coverage
+
+`sonarcloud-js-lcov` reads `SONARQUBE_TOKEN` from
+`~/.config/sonarqube/sonar.env`, runs the project's JS test command,
+expects `coverage/lcov.info`, and invokes:
+
+```bash
+sonar-scanner -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+```
+
+For Frappe or other non-standard test commands, pass the project-specific
+command explicitly:
+
+```bash
+SONAR_JS_TEST_COMMAND="yarn test --coverage" sonarcloud-js-lcov
+```
+
+The shell alias `js-sonar-coverage` points to the same command.
 
 ## Configuration
 

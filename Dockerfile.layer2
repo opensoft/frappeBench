@@ -9,7 +9,7 @@ FROM ${BASE_IMAGE}
 # Container version labels
 LABEL layer="2"
 LABEL layer.name="frappe-bench"
-LABEL layer.version="2.1.0"
+LABEL layer.version="2.1.1"
 LABEL layer.updated="2026-03-07"
 LABEL layer.description="Frappe development and diagnostic tools"
 LABEL bench.type="frappe"
@@ -79,6 +79,7 @@ RUN pip3 install --break-system-packages \
     ruff \
     pre-commit \
     coverage \
+    pytest-cov \
     && pip3 cache purge
 
 # ========================================
@@ -94,6 +95,12 @@ RUN rm -f /etc/apt/sources.list.d/nodesource.list \
     && apt-get clean && rm -rf /var/lib/apt/lists/* \
     && node --version | grep -q '^v20' && echo "✓ Node.js $(node --version) pinned for Frappe" \
     || { echo "✗ Expected Node.js v20, got $(node --version)"; exit 1; }
+
+RUN npm install -g nyc \
+    || echo "⚠️  nyc installation failed, skipping"
+
+COPY files/sonarcloud-js-lcov /usr/local/bin/sonarcloud-js-lcov
+RUN chmod +x /usr/local/bin/sonarcloud-js-lcov
 
 # ========================================
 # BENCH TEMPLATE (SPEED UP NEW WORKSPACES)
@@ -144,7 +151,8 @@ RUN echo '' >> /etc/skel/.zshrc && \
     echo 'alias nginx-debug="nginx -t && tail -n 50 /var/log/nginx/error.log"' >> /etc/skel/.zshrc && \
     echo 'alias frappe-doctor="bench doctor"' >> /etc/skel/.zshrc && \
     echo 'alias redis-monitor="redis-cli monitor"' >> /etc/skel/.zshrc && \
-    echo 'alias check-workers="ps aux | grep -E \"(gunicorn|node|redis|bench)\""' >> /etc/skel/.zshrc
+    echo 'alias check-workers="ps aux | grep -E \"(gunicorn|node|redis|bench)\""' >> /etc/skel/.zshrc && \
+    echo 'alias js-sonar-coverage="sonarcloud-js-lcov"' >> /etc/skel/.zshrc
 
 # Default command
 CMD ["sleep", "infinity"]

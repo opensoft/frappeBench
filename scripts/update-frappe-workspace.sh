@@ -213,12 +213,12 @@ USER=${existing_user}
 UID=${existing_uid}
 GID=${existing_gid}
 
-# Database configuration (uses shared frappe-infra stack)
+# Database configuration (uses shared frappe infra stack)
 DB_HOST=frappe-mariadb
 DB_PORT=3306
 DB_PASSWORD=frappe
 
-# Redis configuration (uses shared frappe-infra stack)
+# Redis configuration (uses shared frappe infra stack)
 REDIS_CACHE=frappe-redis-cache:6379
 REDIS_QUEUE=frappe-redis-queue:6379
 REDIS_SOCKETIO=frappe-redis-socketio:6379

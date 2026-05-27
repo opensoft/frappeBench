@@ -15,6 +15,6 @@ docker compose up -d
 ```
 
 ## Notes
-- Stack name: `frappe-infra`
+- Stack name: `frappe`
 - Containers are named `frappe-mariadb`, `frappe-redis-cache`, `frappe-redis-queue`, `frappe-redis-socketio`.
 - The network is `frappe-network` and is shared with all workspace stacks.

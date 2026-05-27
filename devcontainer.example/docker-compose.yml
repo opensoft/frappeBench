@@ -1,15 +1,15 @@
 # Workspace stack (per workspace)
-name: ${COMPOSE_PROJECT_NAME:-frappe}
+name: ${COMPOSE_PROJECT_NAME:?COMPOSE_PROJECT_NAME must be set in .devcontainer/.env}
 
 services:
   # Main Frappe Web Container - Development environment
   frappe:
     image: frappe-bench:${USER:-brett}
-    container_name: ${WORKSPACE_NAME:-frappe}-bench
+    container_name: ${WORKSPACE_NAME:?WORKSPACE_NAME must be set in .devcontainer/.env}-bench
 
     # Labels for devcontainer metadata
     labels:
-      - "devcontainer.metadata.project_name=${PROJECT_NAME:-frappe}"
+      - "devcontainer.metadata.project_name=${PROJECT_NAME:?PROJECT_NAME must be set in .devcontainer/.env}"
       - "devcontainer.metadata.version=1.0.0"
 
     # Run as user specified with defaults
@@ -32,8 +32,8 @@ services:
     networks:
       - frappe-network
     environment:
-      - PROJECT_NAME=${PROJECT_NAME:-frappe}
-      - WORKSPACE_NAME=${WORKSPACE_NAME:-frappe}
+      - PROJECT_NAME=${PROJECT_NAME:?PROJECT_NAME must be set in .devcontainer/.env}
+      - WORKSPACE_NAME=${WORKSPACE_NAME:?WORKSPACE_NAME must be set in .devcontainer/.env}
       - DB_HOST=${DB_HOST:-frappe-mariadb}
       - DB_PORT=${DB_PORT:-3306}
       - REDIS_CACHE=${REDIS_CACHE:-frappe-redis-cache:6379}
@@ -54,7 +54,7 @@ services:
   # Start with: docker compose --profile workers up -d
   worker-default:
     image: frappe-bench:${USER:-brett}
-    container_name: ${WORKSPACE_NAME:-frappe}-worker-default
+    container_name: ${WORKSPACE_NAME:?WORKSPACE_NAME must be set in .devcontainer/.env}-worker-default
     user: "${UID:-1000}:${GID:-1000}"
     command: bench worker --queue default
     working_dir: /workspace/bench
@@ -68,8 +68,8 @@ services:
     depends_on:
       - frappe
     environment:
-      - PROJECT_NAME=${PROJECT_NAME:-frappe}
-      - WORKSPACE_NAME=${WORKSPACE_NAME:-frappe}
+      - PROJECT_NAME=${PROJECT_NAME:?PROJECT_NAME must be set in .devcontainer/.env}
+      - WORKSPACE_NAME=${WORKSPACE_NAME:?WORKSPACE_NAME must be set in .devcontainer/.env}
       - DB_HOST=${DB_HOST:-frappe-mariadb}
       - DB_PORT=${DB_PORT:-3306}
       - REDIS_CACHE=${REDIS_CACHE:-frappe-redis-cache:6379}
@@ -84,7 +84,7 @@ services:
 
   worker-short:
     image: frappe-bench:${USER:-brett}
-    container_name: ${WORKSPACE_NAME:-frappe}-worker-short
+    container_name: ${WORKSPACE_NAME:?WORKSPACE_NAME must be set in .devcontainer/.env}-worker-short
     user: "${UID:-1000}:${GID:-1000}"
     command: bench worker --queue short
     working_dir: /workspace/bench
@@ -98,8 +98,8 @@ services:
     depends_on:
       - frappe
     environment:
-      - PROJECT_NAME=${PROJECT_NAME:-frappe}
-      - WORKSPACE_NAME=${WORKSPACE_NAME:-frappe}
+      - PROJECT_NAME=${PROJECT_NAME:?PROJECT_NAME must be set in .devcontainer/.env}
+      - WORKSPACE_NAME=${WORKSPACE_NAME:?WORKSPACE_NAME must be set in .devcontainer/.env}
       - DB_HOST=${DB_HOST:-frappe-mariadb}
       - DB_PORT=${DB_PORT:-3306}
       - REDIS_CACHE=${REDIS_CACHE:-frappe-redis-cache:6379}
@@ -114,7 +114,7 @@ services:
 
   worker-long:
     image: frappe-bench:${USER:-brett}
-    container_name: ${WORKSPACE_NAME:-frappe}-worker-long
+    container_name: ${WORKSPACE_NAME:?WORKSPACE_NAME must be set in .devcontainer/.env}-worker-long
     user: "${UID:-1000}:${GID:-1000}"
     command: bench worker --queue long
     working_dir: /workspace/bench
@@ -128,8 +128,8 @@ services:
     depends_on:
       - frappe
     environment:
-      - PROJECT_NAME=${PROJECT_NAME:-frappe}
-      - WORKSPACE_NAME=${WORKSPACE_NAME:-frappe}
+      - PROJECT_NAME=${PROJECT_NAME:?PROJECT_NAME must be set in .devcontainer/.env}
+      - WORKSPACE_NAME=${WORKSPACE_NAME:?WORKSPACE_NAME must be set in .devcontainer/.env}
       - DB_HOST=${DB_HOST:-frappe-mariadb}
       - DB_PORT=${DB_PORT:-3306}
       - REDIS_CACHE=${REDIS_CACHE:-frappe-redis-cache:6379}
@@ -144,7 +144,7 @@ services:
 
   scheduler:
     image: frappe-bench:${USER:-brett}
-    container_name: ${WORKSPACE_NAME:-frappe}-scheduler
+    container_name: ${WORKSPACE_NAME:?WORKSPACE_NAME must be set in .devcontainer/.env}-scheduler
     user: "${UID:-1000}:${GID:-1000}"
     command: bench schedule
     working_dir: /workspace/bench
@@ -158,8 +158,8 @@ services:
     depends_on:
       - frappe
     environment:
-      - PROJECT_NAME=${PROJECT_NAME:-frappe}
-      - WORKSPACE_NAME=${WORKSPACE_NAME:-frappe}
+      - PROJECT_NAME=${PROJECT_NAME:?PROJECT_NAME must be set in .devcontainer/.env}
+      - WORKSPACE_NAME=${WORKSPACE_NAME:?WORKSPACE_NAME must be set in .devcontainer/.env}
       - DB_HOST=${DB_HOST:-frappe-mariadb}
       - DB_PORT=${DB_PORT:-3306}
       - REDIS_CACHE=${REDIS_CACHE:-frappe-redis-cache:6379}
@@ -174,7 +174,7 @@ services:
 
   socketio:
     image: frappe-bench:${USER:-brett}
-    container_name: ${WORKSPACE_NAME:-frappe}-socketio
+    container_name: ${WORKSPACE_NAME:?WORKSPACE_NAME must be set in .devcontainer/.env}-socketio
     user: "${UID:-1000}:${GID:-1000}"
     command: node /workspace/bench/apps/frappe/socketio.js
     working_dir: /workspace/bench
@@ -188,8 +188,8 @@ services:
     depends_on:
       - frappe
     environment:
-      - PROJECT_NAME=${PROJECT_NAME:-frappe}
-      - WORKSPACE_NAME=${WORKSPACE_NAME:-frappe}
+      - PROJECT_NAME=${PROJECT_NAME:?PROJECT_NAME must be set in .devcontainer/.env}
+      - WORKSPACE_NAME=${WORKSPACE_NAME:?WORKSPACE_NAME must be set in .devcontainer/.env}
       - REDIS_SOCKETIO=${REDIS_SOCKETIO:-frappe-redis-socketio:6379}
     restart: unless-stopped
     deploy:
@@ -202,7 +202,7 @@ services:
   # For development, you can access Frappe directly via "bench start" on port 8000
   nginx:
     image: nginx:alpine
-    container_name: ${WORKSPACE_NAME:-frappe}-nginx
+    container_name: ${WORKSPACE_NAME:?WORKSPACE_NAME must be set in .devcontainer/.env}-nginx
     ports:
       - "${NGINX_HOST_PORT:-8081}:80"
     volumes:
