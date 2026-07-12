@@ -9,7 +9,7 @@ FROM ${BASE_IMAGE}
 # Container version labels
 LABEL layer="2"
 LABEL layer.name="frappe-bench"
-LABEL layer.version="2.1.1"
+LABEL layer.version="2.1.3"
 LABEL layer.updated="2026-03-07"
 LABEL layer.description="Frappe development and diagnostic tools"
 LABEL bench.type="frappe"
@@ -60,12 +60,7 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
 # DOCKER CLI (daemon runs on host via mounted socket)
 # ========================================
 
-RUN curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-27.5.1.tgz \
-    | tar xz --strip-components=1 -C /usr/local/bin docker/docker \
-    && mkdir -p /usr/local/lib/docker/cli-plugins \
-    && curl -fsSL -o /usr/local/lib/docker/cli-plugins/docker-compose \
-       https://github.com/docker/compose/releases/download/v2.34.0/docker-compose-linux-x86_64 \
-    && chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+RUN docker --version && docker compose version
 
 # ========================================
 # PYTHON DIAGNOSTIC TOOLS
@@ -75,12 +70,21 @@ RUN curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-27.
 RUN pip3 install --break-system-packages \
     py-spy \
     web-pdb \
-    frappe-bench \
     ruff \
     pre-commit \
     coverage \
     pytest-cov \
-    && pip3 cache purge
+    'click~=8.2.0' \
+    'gitpython~=3.1.30' \
+    honcho \
+    'jinja2~=3.1.3' \
+    'python-crontab~=2.6.0' \
+    'requests~=2.33.0' \
+    'setuptools>=71.0.0,<82.0.0' \
+    && pip3 install --break-system-packages --no-deps frappe-bench \
+    && pip3 cache purge \
+    && uv --version \
+    && bench --version
 
 # ========================================
 # NODE.JS VERSION PIN (Frappe requires Node 18 or 20)
