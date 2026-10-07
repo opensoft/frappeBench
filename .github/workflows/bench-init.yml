@@ -1,0 +1,28 @@
+name: Bench process reaping
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: Load immutable public configuration checker
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          repository: opensoft/workBenches
+          ref: 408aecf0a09e8e89519f7df0150c1ec43cda8daa
+          path: .bench-init-checker
+          persist-credentials: false
+      - name: Validate canonical bench configurations without starting services
+        run: python3 .bench-init-checker/scripts/check-bench-init.py .
