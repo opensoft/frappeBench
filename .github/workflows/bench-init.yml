@@ -21,7 +21,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: opensoft/workBenches
-          ref: 3f180c5c42cca2fce259105cb1252521423ee274
+          ref: 408aecf0a09e8e89519f7df0150c1ec43cda8daa
           path: .bench-init-checker
           persist-credentials: false
       - name: Validate canonical bench configurations without starting services
