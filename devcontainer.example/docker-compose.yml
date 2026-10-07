@@ -4,6 +4,7 @@ name: ${COMPOSE_PROJECT_NAME:?COMPOSE_PROJECT_NAME must be set in .devcontainer/
 services:
   # Main Frappe Web Container - Development environment
   frappe:
+    init: true
     image: frappe-bench:${USER:-brett}
     container_name: ${WORKSPACE_NAME:?WORKSPACE_NAME must be set in .devcontainer/.env}-bench
 
@@ -53,6 +54,7 @@ services:
   # NOTE: These should only be started AFTER initializing a bench site
   # Start with: docker compose --profile workers up -d
   worker-default:
+    init: true
     image: frappe-bench:${USER:-brett}
     container_name: ${WORKSPACE_NAME:?WORKSPACE_NAME must be set in .devcontainer/.env}-worker-default
     user: "${UID:-1000}:${GID:-1000}"
@@ -83,6 +85,7 @@ services:
           cpus: "${CONTAINER_CPUS:-1}"
 
   worker-short:
+    init: true
     image: frappe-bench:${USER:-brett}
     container_name: ${WORKSPACE_NAME:?WORKSPACE_NAME must be set in .devcontainer/.env}-worker-short
     user: "${UID:-1000}:${GID:-1000}"
@@ -113,6 +116,7 @@ services:
           cpus: "${CONTAINER_CPUS:-1}"
 
   worker-long:
+    init: true
     image: frappe-bench:${USER:-brett}
     container_name: ${WORKSPACE_NAME:?WORKSPACE_NAME must be set in .devcontainer/.env}-worker-long
     user: "${UID:-1000}:${GID:-1000}"
@@ -143,6 +147,7 @@ services:
           cpus: "${CONTAINER_CPUS:-1}"
 
   scheduler:
+    init: true
     image: frappe-bench:${USER:-brett}
     container_name: ${WORKSPACE_NAME:?WORKSPACE_NAME must be set in .devcontainer/.env}-scheduler
     user: "${UID:-1000}:${GID:-1000}"
@@ -173,6 +178,7 @@ services:
           cpus: "${CONTAINER_CPUS:-1}"
 
   socketio:
+    init: true
     image: frappe-bench:${USER:-brett}
     container_name: ${WORKSPACE_NAME:?WORKSPACE_NAME must be set in .devcontainer/.env}-socketio
     user: "${UID:-1000}:${GID:-1000}"
