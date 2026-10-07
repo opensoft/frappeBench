@@ -1,0 +1,34 @@
+name: Bench process reaping
+
+on:
+  pull_request:
+    paths:
+      - '**/docker-compose*.yml'
+      - .github/workflows/bench-init.yml
+  push:
+    branches: [main]
+    paths:
+      - '**/docker-compose*.yml'
+      - .github/workflows/bench-init.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: Load immutable public configuration checker
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          repository: opensoft/workBenches
+          ref: f23eb71c240c8a530891bd7fd1e594b2831d0402
+          path: .bench-init-checker
+          persist-credentials: false
+      - name: Validate canonical bench configurations without starting services
+        run: python3 .bench-init-checker/scripts/check-bench-init.py .
